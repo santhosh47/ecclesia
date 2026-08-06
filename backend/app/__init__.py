@@ -1,0 +1,1 @@
+"""Ecclesia backend application package."""
