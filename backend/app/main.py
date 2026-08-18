@@ -41,3 +41,10 @@ def root() -> dict[str, str]:
     """Return a small service-identification response."""
 
     return {"service": settings.app_name, "status": "running"}
+
+
+@app.get("/api/v1/health", tags=["system"])
+def health_check() -> dict[str, str]:
+    """Health check response."""
+    return {"status": "ok"}
+

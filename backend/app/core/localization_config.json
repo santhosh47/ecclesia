@@ -1,0 +1,182 @@
+{
+  "active_mode": "IN",
+  "organization": {
+    "name": "St. Luke's Cathedral & Parish",
+    "senior_pastor": "Rev. Dr. Samuel Thomas, DD",
+    "denomination": "Anglican Communion",
+    "motto": "Worship \u2022 Community \u2022 Discipleship",
+    "established_year": 1985,
+    "address": "12 Cathedral Road, Bangalore, KA 560001",
+    "city": "Bangalore",
+    "state": "KA",
+    "postal_code": "560001",
+    "country": "India",
+    "email": "office@ecclesia-church.org",
+    "phone": "+91 80 9999 8888",
+    "website": "https://ecclesia-church.org",
+    "tax_id_in_80g": "CIT(E)/BLR/80G/2024-25/AABTE1234F",
+    "pan_number": "AABTE1234F",
+    "fcra_registration_no": "094421876",
+    "us_ein": "12-3456789",
+    "uk_charity_number": "1198765",
+    "currency_in": "INR",
+    "currency_symbol_in": "\u20b9",
+    "currency_global": "USD",
+    "currency_symbol_global": "$"
+  },
+  "modules": {
+    "double_entry_ledger": true,
+    "payroll_staff_ledger": true,
+    "giving_and_pledges": true,
+    "church_activities_calendar": true,
+    "pdf_certificates": true,
+    "mass_messaging": true,
+    "tax_compliance": true,
+    "attendance_checkin": true,
+    "ministries_groups": true,
+    "pastoral_care": true,
+    "csv_migration": true
+  },
+  "roles": [
+    {
+      "id": "super_admin",
+      "name": "Super Admin",
+      "description": "Full unrestricted system administration, settings, and user access management",
+      "is_system": true,
+      "permissions": [
+        "view_members",
+        "edit_members",
+        "view_finances",
+        "manage_finances",
+        "view_ledger",
+        "manage_ledger",
+        "tax_compliance",
+        "manage_attendance",
+        "pastoral_notes",
+        "mass_messaging",
+        "issue_certificates",
+        "manage_calendar",
+        "manage_settings",
+        "manage_roles"
+      ]
+    },
+    {
+      "id": "pastor",
+      "name": "Pastor / Clergy",
+      "description": "Pastoral oversight, counseling notes, liturgical events, sacraments and messaging",
+      "is_system": true,
+      "permissions": [
+        "view_members",
+        "edit_members",
+        "pastoral_notes",
+        "manage_attendance",
+        "manage_calendar",
+        "mass_messaging",
+        "issue_certificates",
+        "view_finances"
+      ]
+    },
+    {
+      "id": "elder",
+      "name": "Elder / Church Council",
+      "description": "Spiritual guidance, pastoral visits, member directory and church calendar access",
+      "is_system": true,
+      "permissions": [
+        "view_members",
+        "pastoral_notes",
+        "manage_attendance",
+        "manage_calendar"
+      ]
+    },
+    {
+      "id": "treasurer",
+      "name": "Treasurer & Accountant",
+      "description": "Double-entry general ledger, giving receipts, payroll disbursement, 80G and FCRA tax compliance",
+      "is_system": true,
+      "permissions": [
+        "view_finances",
+        "manage_finances",
+        "view_ledger",
+        "manage_ledger",
+        "tax_compliance",
+        "view_members"
+      ]
+    },
+    {
+      "id": "sub_admin",
+      "name": "Sub-Admin / Office Staff",
+      "description": "Member records management, attendance roster, event calendar scheduling and certificates",
+      "is_system": true,
+      "permissions": [
+        "view_members",
+        "edit_members",
+        "manage_attendance",
+        "manage_calendar",
+        "mass_messaging",
+        "issue_certificates"
+      ]
+    },
+    {
+      "id": "ministry_leader",
+      "name": "Ministry Leader",
+      "description": "Ministry roster management, activity calendar and check-in tracking",
+      "is_system": true,
+      "permissions": [
+        "view_members",
+        "manage_attendance",
+        "manage_calendar"
+      ]
+    },
+    {
+      "id": "audit_committee",
+      "name": "Audit & Finance Committee",
+      "description": "Internal audit review for double-entry ledger and bank records",
+      "is_system": false,
+      "permissions": [
+        "view_ledger",
+        "view_finances",
+        "tax_compliance"
+      ]
+    }
+  ],
+  "in_mode_settings": {
+    "payment_gateways": {
+      "razorpay_enabled": true,
+      "razorpay_key_id": "rzp_test_ecclesia_sample",
+      "upi_enabled": true,
+      "upi_vpa": "ecclesia.church@icici"
+    },
+    "tax_and_compliance": {
+      "auto_80g_receipts": true,
+      "pan_mandatory_for_donations_above": 2000,
+      "form_10bd_export_enabled": true,
+      "fcra_split_ledger_enabled": true,
+      "gst_breakdown_enabled": true
+    },
+    "messaging": {
+      "sms_provider": "TRAI_DLT_Compliant",
+      "trai_entity_id": "140155000000001",
+      "trai_header_id": "ECCLSA",
+      "whatsapp_enabled": true
+    }
+  },
+  "global_mode_settings": {
+    "payment_gateways": {
+      "stripe_enabled": true,
+      "stripe_publishable_key": "pk_test_sample_ecclesia",
+      "paypal_enabled": true,
+      "paypal_client_id": "sample_paypal_client_id"
+    },
+    "tax_and_compliance": {
+      "us_501c3_receipts": true,
+      "uk_gift_aid_claim_rate": 0.25,
+      "eu_tax_receipts": true
+    },
+    "messaging": {
+      "sms_provider": "Twilio_A2P_10DLC",
+      "twilio_10dlc_campaign_id": "CMP_sample_ecclesia",
+      "gdpr_opt_out_link_mandatory": true,
+      "whatsapp_enabled": true
+    }
+  }
+}

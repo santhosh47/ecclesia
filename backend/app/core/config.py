@@ -1,5 +1,5 @@
-"""Environment-based application configuration."""
-
+import json
+from pathlib import Path
 from functools import lru_cache
 
 from pydantic import field_validator
@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./ecclesia.db"
     cors_origins: str = "http://localhost:5173"
     jwt_secret_key: str | None = None
+    default_localization_mode: str = "IN"  # "IN" or "GLOBAL"
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
@@ -30,8 +31,30 @@ class Settings(BaseSettings):
         return value
 
 
+def get_localization_config_path() -> Path:
+    """Return path to localization_config.json."""
+    return Path(__file__).parent / "localization_config.json"
+
+
+def load_localization_config() -> dict:
+    """Load current localization configuration from JSON file."""
+    path = get_localization_config_path()
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"active_mode": "IN"}
+
+
+def save_localization_config(data: dict) -> None:
+    """Save localization configuration to JSON file."""
+    path = get_localization_config_path()
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
 @lru_cache
 def get_settings() -> Settings:
     """Return one cached settings instance for the running application."""
 
     return Settings()
+
