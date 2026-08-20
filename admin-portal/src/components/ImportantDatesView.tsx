@@ -13,6 +13,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useLocalization } from '../context/LocalizationContext';
 import { MilestoneItem } from '../types';
 
 interface ImportantDatesViewProps {
@@ -20,6 +21,7 @@ interface ImportantDatesViewProps {
 }
 
 export const ImportantDatesView: React.FC<ImportantDatesViewProps> = ({ onSelectMember }) => {
+  const { churchProfile } = useLocalization();
   const [milestones, setMilestones] = useState<MilestoneItem[]>([]);
   const [daysFilter, setDaysFilter] = useState<number>(30);
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
@@ -41,7 +43,7 @@ export const ImportantDatesView: React.FC<ImportantDatesViewProps> = ({ onSelect
   }, [daysFilter, typeFilter]);
 
   const copyGreeting = (m: MilestoneItem) => {
-    const text = `Dear ${m.member_name}, wishing you a joyful and blessed ${m.years ? `${m.years}th ` : ''}${m.milestone_type}! We praise God for you and pray His grace, health, and favor over you this year! - Grace Ecclesia Church`;
+    const text = `Dear ${m.member_name}, wishing you a joyful and blessed ${m.years ? `${m.years}th ` : ''}${m.milestone_type}! We praise God for you and pray His grace, health, and favor over you this year! - ${churchProfile.name || 'Ecclesia Church'}`;
     navigator.clipboard.writeText(text);
     setCopiedId(m.member_id);
     setTimeout(() => setCopiedId(null), 2500);

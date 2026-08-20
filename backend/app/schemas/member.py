@@ -22,6 +22,7 @@ class MemberBase(BaseModel):
     avatar_url: str | None = None
     status: str = "Active"
     member_type: str = "Adult"
+    leadership_role: str | None = None  # Elder, Deacon, Minister, Preacher, Pastor, Evangelist
     
     # Tax & Compliance
     pan_number: str | None = None
@@ -71,6 +72,7 @@ class MemberUpdate(BaseModel):
     avatar_url: str | None = None
     status: str | None = None
     member_type: str | None = None
+    leadership_role: str | None = None
     
     pan_number: str | None = None
     tax_id: str | None = None

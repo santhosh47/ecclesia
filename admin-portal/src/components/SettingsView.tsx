@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Building,
   CheckCircle2,
   DollarSign,
   Globe,
+  Info,
   Key,
   Layers,
   Lock,
@@ -12,6 +13,7 @@ import {
   Shield,
   Trash2,
   UserCheck,
+  X,
 } from 'lucide-react';
 import { useLocalization } from '../context/LocalizationContext';
 import { ChurchProfile, RoleDefinition } from '../types';
@@ -34,8 +36,14 @@ export const SettingsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'modules' | 'rbac' | 'localization'>('profile');
   const [profileForm, setProfileForm] = useState<ChurchProfile>(churchProfile);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // New Custom Role Modal State
+  // Sync profile form whenever churchProfile is updated/loaded
+  useEffect(() => {
+    setProfileForm(churchProfile);
+  }, [churchProfile]);
+
+  // Role Modal State
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleDefinition | null>(null);
   const [roleForm, setRoleForm] = useState<{ id: string; name: string; description: string; permissions: string[] }>({
@@ -64,9 +72,16 @@ export const SettingsView: React.FC = () => {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateChurchProfile(profileForm);
-    setSaveSuccess('Church profile updated successfully!');
-    setTimeout(() => setSaveSuccess(null), 3000);
+    setIsSaving(true);
+    try {
+      await updateChurchProfile(profileForm);
+      setSaveSuccess('Church profile and legal details saved successfully!');
+      setTimeout(() => setSaveSuccess(null), 3500);
+    } catch (err: any) {
+      alert(err.message || 'Failed to save church profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleToggleModule = async (moduleKey: string) => {
@@ -101,41 +116,65 @@ export const SettingsView: React.FC = () => {
     await saveRole(roleForm);
     setShowRoleModal(false);
     setSaveSuccess(`Role '${roleForm.name}' saved successfully!`);
-    setTimeout(() => setSaveSuccess(null), 3000);
+    setTimeout(() => setSaveSuccess(null), 3500);
   };
 
   const moduleDefinitions = [
-    { key: 'double_entry_ledger', label: 'Double-Entry Ledger & Bookkeeping', desc: 'General ledger, balanced journal entries, chart of accounts, and trial balance reports.' },
-    { key: 'payroll_staff_ledger', label: 'Clergy & Staff Payroll', desc: 'Monthly payslip calculation, allowances, deductions, and disbursement records.' },
-    { key: 'giving_and_pledges', label: 'Giving, Tithes & Pledge Campaigns', desc: 'Online and offline donation tracking, pledge fulfillment gauges, and donor tax statements.' },
-    { key: 'church_activities_calendar', label: 'Church Activities & Events Calendar', desc: 'Schedule regular weekly worship services, choir rehearsals, committee meetings, and conferences.' },
-    { key: 'pdf_certificates', label: 'Milestone Life Certificates & PDF Generator', desc: 'Baptism, Wedding, Dedication, Confirmation certificates with dynamic gold ornate borders.' },
-    { key: 'mass_messaging', label: 'Mass Messaging & WhatsApp Broadcasts', desc: 'TRAI DLT compliant SMS templates and broadcast dispatch to congregation groups.' },
-    { key: 'tax_compliance', label: 'Tax Compliance (80G / 501(c)(3) / FCRA)', desc: 'Section 80G tax exemption receipts, Form 10BD export schedule, and foreign inward remittance register.' },
-    { key: 'attendance_checkin', label: 'Attendance Roster & Absentee Alerts', desc: 'Live headcount check-in and 3-week consecutive absence alerts for pastoral follow-up.' },
+    { key: 'double_entry_ledger', label: 'Double-Entry Ledger & Bookkeeping', desc: 'General journal ledger, balanced debit/credit entries, chart of accounts, and trial balance reports.' },
+    { key: 'payroll_staff_ledger', label: 'Clergy & Staff Payroll Engine', desc: 'Monthly payslip calculation, allowances, statutory deductions, and ledger disbursement records.' },
+    { key: 'giving_and_pledges', label: 'Giving, Tithes & Pledge Campaigns', desc: 'Online and offline donation recording, pledge progress gauges, and annual donor tax statements.' },
+    { key: 'church_activities_calendar', label: 'Church Activities & Events Calendar', desc: 'Schedule worship services, weekly prayer meetings, choir rehearsals, committee gatherings, and conferences.' },
+    { key: 'pdf_certificates', label: 'Milestone Life Certificates & PDF Generator', desc: 'Baptism, Wedding, Child Dedication, and Confirmation certificates with ornate borders and registration details.' },
+    { key: 'mass_messaging', label: 'Mass Messaging & WhatsApp Broadcasts', desc: 'TRAI DLT compliant SMS templates and broadcast dispatch to congregation and ministry groups.' },
+    { key: 'tax_compliance', label: 'Tax Compliance (80G / 501(c)(3) / FCRA)', desc: 'Section 80G tax exemption receipts, Form 10BD electronic return exports, and foreign remittance register.' },
+    { key: 'attendance_checkin', label: 'Attendance Roster & Absentee Alerts', desc: 'Live headcount check-in and 3-week consecutive absence alerts for proactive pastoral care.' },
     { key: 'ministries_groups', label: 'Ministries & Department Rosters', desc: 'Organize worship team, youth fellowship, Sunday school, and committee memberships.' },
     { key: 'pastoral_care', label: 'Pastoral Care Notes & Prayer Board', desc: 'Confidential visitation logs, pastoral counseling records, and answered prayer tracking.' },
-    { key: 'csv_migration', label: 'CSV Migration Tool (ChurchCRM / Excel)', desc: 'Batch import/export of church membership rosters and family groupings.' },
+    { key: 'csv_migration', label: 'CSV Migration Tool (ChurchCRM / Excel)', desc: 'Batch import and export of church membership rosters and family household groupings.' },
   ];
 
   return (
     <div className="view-container">
       {/* Header */}
-      <div className="view-header">
+      <div className="view-header" style={{ marginBottom: '24px' }}>
         <div>
-          <h1 className="view-title">Administration & System Customization</h1>
+          <h1 className="view-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Shield size={28} color="var(--gold-400)" />
+            <span>Administration & System Customization</span>
+          </h1>
           <p className="view-subtitle">
-            Configure church profile, toggle fine-grained feature modules, and manage role-based access permissions.
+            Configure church profile, legal registration details, fine-grained feature modules, and role-based access control.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f1f5f9', padding: '0.4rem 0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
-            <UserCheck size={16} color="#6366f1" />
-            <span>Active Role Tester:</span>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid var(--border-subtle)',
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '13px',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            <UserCheck size={16} color="var(--gold-400)" />
+            <span style={{ fontWeight: 600 }}>Active Role Tester:</span>
             <select
               value={currentRole}
               onChange={(e) => setCurrentRole(e.target.value)}
-              style={{ border: 'none', background: 'transparent', fontWeight: 600, color: '#1e293b', cursor: 'pointer' }}
+              className="form-select"
+              style={{
+                width: 'auto',
+                padding: '4px 8px',
+                fontSize: '12.5px',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                background: 'transparent',
+                border: '1px solid var(--border-subtle)',
+              }}
             >
               {roles.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -148,266 +187,366 @@ export const SettingsView: React.FC = () => {
       </div>
 
       {saveSuccess && (
-        <div style={{ background: '#ecfdf5', border: '1px solid #10b981', color: '#065f46', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <CheckCircle2 size={18} />
+        <div
+          style={{
+            background: 'rgba(16, 185, 129, 0.12)',
+            border: '1px solid #10b981',
+            color: '#34d399',
+            padding: '12px 18px',
+            borderRadius: 'var(--radius-sm)',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontWeight: 600,
+            fontSize: '14px',
+          }}
+        >
+          <CheckCircle2 size={20} color="#10b981" />
           <span>{saveSuccess}</span>
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '2px solid #e2e8f0', marginBottom: '1.5rem' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: '8px',
+          borderBottom: '1px solid var(--border-subtle)',
+          marginBottom: '24px',
+          flexWrap: 'wrap',
+        }}
+      >
         <button
           onClick={() => setActiveTab('profile')}
+          className="btn"
           style={{
-            padding: '0.75rem 1.25rem',
-            border: 'none',
-            background: 'none',
+            background: activeTab === 'profile' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'profile' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'profile' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
             fontWeight: 600,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            borderBottom: activeTab === 'profile' ? '3px solid #6366f1' : '3px solid transparent',
-            color: activeTab === 'profile' ? '#6366f1' : '#64748b',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '8px',
           }}
         >
-          <Building size={18} />
+          <Building size={16} />
           <span>Church Profile & Branding</span>
         </button>
         <button
           onClick={() => setActiveTab('modules')}
+          className="btn"
           style={{
-            padding: '0.75rem 1.25rem',
-            border: 'none',
-            background: 'none',
+            background: activeTab === 'modules' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'modules' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'modules' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
             fontWeight: 600,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            borderBottom: activeTab === 'modules' ? '3px solid #6366f1' : '3px solid transparent',
-            color: activeTab === 'modules' ? '#6366f1' : '#64748b',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '8px',
           }}
         >
-          <Layers size={18} />
+          <Layers size={16} />
           <span>Feature Module Toggles</span>
         </button>
         <button
           onClick={() => setActiveTab('rbac')}
+          className="btn"
           style={{
-            padding: '0.75rem 1.25rem',
-            border: 'none',
-            background: 'none',
+            background: activeTab === 'rbac' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'rbac' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'rbac' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
             fontWeight: 600,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            borderBottom: activeTab === 'rbac' ? '3px solid #6366f1' : '3px solid transparent',
-            color: activeTab === 'rbac' ? '#6366f1' : '#64748b',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '8px',
           }}
         >
-          <Shield size={18} />
+          <Shield size={16} />
           <span>Roles & Permissions (RBAC)</span>
         </button>
         <button
           onClick={() => setActiveTab('localization')}
+          className="btn"
           style={{
-            padding: '0.75rem 1.25rem',
-            border: 'none',
-            background: 'none',
+            background: activeTab === 'localization' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'localization' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'localization' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
             fontWeight: 600,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            borderBottom: activeTab === 'localization' ? '3px solid #6366f1' : '3px solid transparent',
-            color: activeTab === 'localization' ? '#6366f1' : '#64748b',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '8px',
           }}
         >
-          <Globe size={18} />
+          <Globe size={16} />
           <span>Localization & Tax Regime</span>
         </button>
       </div>
 
-      {/* Tab 1: Church Profile */}
+      {/* Tab 1: Church Profile & Legal Branding */}
       {activeTab === 'profile' && (
-        <form onSubmit={handleProfileSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-          <div className="card" style={{ gridColumn: '1 / -1' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b' }}>
+        <form onSubmit={handleProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Card 1: Parish Identity */}
+          <div className="card" style={{ padding: '24px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
               Parish & Organization Identity
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>
-                  Church Official Name *
-                </label>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginBottom: '18px' }}>
+              Primary name and leadership details displayed on all official reports, receipts, and certificates.
+            </p>
+
+            <div className="form-grid">
+              <div className="form-group-full">
+                <label className="form-label">Church Official Name *</label>
                 <input
                   type="text"
                   required
                   value={profileForm.name}
                   onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  placeholder="e.g. St. Luke's Ecclesia Church"
+                  className="form-input"
+                  placeholder="e.g. Grace Community Church"
                 />
               </div>
+
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>
-                  Senior Pastor / Presbyter-in-Charge
-                </label>
+                <label className="form-label">Senior Pastor / Presbyter-in-Charge</label>
                 <input
                   type="text"
                   value={profileForm.senior_pastor || ''}
                   onChange={(e) => setProfileForm({ ...profileForm, senior_pastor: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  placeholder="e.g. Rev. Dr. Samuel Thomas"
+                  className="form-input"
+                  placeholder="e.g. Pastor Dr. Samuel Thomas"
                 />
               </div>
+
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>
-                  Denomination / Affiliation
-                </label>
+                <label className="form-label">Denomination / Affiliation</label>
                 <input
                   type="text"
                   value={profileForm.denomination || ''}
                   onChange={(e) => setProfileForm({ ...profileForm, denomination: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  className="form-input"
                   placeholder="e.g. Anglican Communion / Ecumenical"
                 />
               </div>
+
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>
-                  Motto / Vision Statement
-                </label>
+                <label className="form-label">Motto / Vision Statement</label>
                 <input
                   type="text"
                   value={profileForm.motto || ''}
                   onChange={(e) => setProfileForm({ ...profileForm, motto: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  className="form-input"
                   placeholder="e.g. Worship • Community • Discipleship"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Established Year</label>
+                <input
+                  type="number"
+                  value={profileForm.established_year || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, established_year: Number(e.target.value) || undefined })}
+                  className="form-input"
+                  placeholder="e.g. 1985"
                 />
               </div>
             </div>
           </div>
 
-          <div className="card">
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b' }}>
+          {/* Card 2: Address & Contact */}
+          <div className="card" style={{ padding: '24px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
               Address & Contact Information
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>Street Address</label>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginBottom: '18px' }}>
+              Official parish headquarters location printed on certificate subheadings and tax filings.
+            </p>
+
+            <div className="form-grid">
+              <div className="form-group-full">
+                <label className="form-label">Street Address</label>
                 <input
                   type="text"
                   value={profileForm.address || ''}
                   onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  className="form-input"
+                  placeholder="e.g. 12 Cathedral Road"
                 />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.5rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>City</label>
-                  <input
-                    type="text"
-                    value={profileForm.city || ''}
-                    onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>State</label>
-                  <input
-                    type="text"
-                    value={profileForm.state || ''}
-                    onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>Postal Code</label>
-                  <input
-                    type="text"
-                    value={profileForm.postal_code || ''}
-                    onChange={(e) => setProfileForm({ ...profileForm, postal_code: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  />
-                </div>
+
+              <div>
+                <label className="form-label">City</label>
+                <input
+                  type="text"
+                  value={profileForm.city || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
+                  className="form-input"
+                  placeholder="e.g. Bangalore"
+                />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>Email</label>
-                  <input
-                    type="email"
-                    value={profileForm.email || ''}
-                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>Phone</label>
-                  <input
-                    type="text"
-                    value={profileForm.phone || ''}
-                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  />
-                </div>
+
+              <div>
+                <label className="form-label">State / Province</label>
+                <input
+                  type="text"
+                  value={profileForm.state || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
+                  className="form-input"
+                  placeholder="e.g. Karnataka"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Postal / ZIP Code</label>
+                <input
+                  type="text"
+                  value={profileForm.postal_code || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, postal_code: e.target.value })}
+                  className="form-input"
+                  placeholder="e.g. 560001"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Country</label>
+                <input
+                  type="text"
+                  value={profileForm.country || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, country: e.target.value })}
+                  className="form-input"
+                  placeholder="e.g. India"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Official Email</label>
+                <input
+                  type="email"
+                  value={profileForm.email || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                  className="form-input"
+                  placeholder="office@ecclesia-church.org"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Official Phone</label>
+                <input
+                  type="text"
+                  value={profileForm.phone || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                  className="form-input"
+                  placeholder="+91 80 2345 6789"
+                />
+              </div>
+
+              <div className="form-group-full">
+                <label className="form-label">Official Website</label>
+                <input
+                  type="url"
+                  value={profileForm.website || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, website: e.target.value })}
+                  className="form-input"
+                  placeholder="https://ecclesia-church.org"
+                />
               </div>
             </div>
           </div>
 
-          <div className="card">
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b' }}>
+          {/* Card 3: Tax & Legal Registrations */}
+          <div className="card" style={{ padding: '24px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
               Tax & Legal Registrations
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginBottom: '18px' }}>
+              Statutory registration numbers for Section 80G certificates, Form 10BD electronic return, and foreign remittances.
+            </p>
+
+            <div className="form-grid">
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>
-                  India 80G Tax Exemption Reg. No.
-                </label>
+                <label className="form-label">India 80G Tax Exemption Reg. No.</label>
                 <input
                   type="text"
                   value={profileForm.tax_id_in_80g || ''}
                   onChange={(e) => setProfileForm({ ...profileForm, tax_id_in_80g: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  placeholder="CIT(E)/BLR/80G/2024-25/..."
+                  className="form-input"
+                  style={{ fontFamily: 'monospace' }}
+                  placeholder="CIT(E)/BLR/80G/2024-25/AABTE1234F"
                 />
               </div>
+
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>
-                  Church Trust PAN Number
-                </label>
+                <label className="form-label">Church Trust PAN Number</label>
                 <input
                   type="text"
                   value={profileForm.pan_number || ''}
                   onChange={(e) => setProfileForm({ ...profileForm, pan_number: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  placeholder="e.g. AABTE1234F"
+                  className="form-input"
+                  style={{ fontFamily: 'monospace', textTransform: 'uppercase' }}
+                  placeholder="AABTE1234F"
                 />
               </div>
+
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#475569' }}>
-                  FCRA Registration No. (MHA)
-                </label>
+                <label className="form-label">FCRA Registration No. (MHA)</label>
                 <input
                   type="text"
                   value={profileForm.fcra_registration_no || ''}
                   onChange={(e) => setProfileForm({ ...profileForm, fcra_registration_no: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                  placeholder="e.g. 094421876"
+                  className="form-input"
+                  style={{ fontFamily: 'monospace' }}
+                  placeholder="094421876"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">US IRS 501(c)(3) EIN</label>
+                <input
+                  type="text"
+                  value={profileForm.us_ein || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, us_ein: e.target.value })}
+                  className="form-input"
+                  style={{ fontFamily: 'monospace' }}
+                  placeholder="12-3456789"
+                />
+              </div>
+
+              <div className="form-group-full">
+                <label className="form-label">UK Charity Commission Number</label>
+                <input
+                  type="text"
+                  value={profileForm.uk_charity_number || ''}
+                  onChange={(e) => setProfileForm({ ...profileForm, uk_charity_number: e.target.value })}
+                  className="form-input"
+                  style={{ fontFamily: 'monospace' }}
+                  placeholder="1198765"
                 />
               </div>
             </div>
           </div>
 
-          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-            <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 28px', fontSize: '14px', fontWeight: 700 }}
+            >
               <Save size={18} />
-              <span>Save Church Profile</span>
+              <span>{isSaving ? 'Saving Changes...' : 'Save Church Profile'}</span>
             </button>
           </div>
         </form>
@@ -415,15 +554,27 @@ export const SettingsView: React.FC = () => {
 
       {/* Tab 2: Feature Module Toggles */}
       {activeTab === 'modules' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="card" style={{ background: '#f8fafc', borderLeft: '4px solid #6366f1' }}>
-            <h4 style={{ fontWeight: 600, color: '#1e293b', marginBottom: '0.25rem' }}>Fine-Grained System Customization</h4>
-            <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
-              Toggle non-essential modules on or off based on your parish workflow requirements. Core congregation management (Members & Households) remains permanently active.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div
+            className="card"
+            style={{
+              padding: '16px 20px',
+              borderLeft: '4px solid var(--gold-500)',
+              background: 'rgba(255, 255, 255, 0.02)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <Info size={18} color="var(--gold-400)" />
+              <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '15px' }}>
+                Fine-Grained System Customization
+              </h4>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Enable or disable software modules according to your parish requirements. Core congregation management (Members & Households) remains permanently active.
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
             {moduleDefinitions.map((mod) => {
               const isEnabled = modules[mod.key] ?? true;
               return (
@@ -434,50 +585,29 @@ export const SettingsView: React.FC = () => {
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    border: isEnabled ? '1px solid #e2e8f0' : '1px dashed #cbd5e1',
-                    background: isEnabled ? '#ffffff' : '#f8fafc',
-                    opacity: isEnabled ? 1 : 0.75,
+                    padding: '20px',
+                    border: isEnabled ? '1px solid var(--border-subtle)' : '1px dashed var(--border-subtle)',
+                    opacity: isEnabled ? 1 : 0.7,
                   }}
                 >
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                      <h4 style={{ fontWeight: 600, color: isEnabled ? '#1e293b' : '#64748b', fontSize: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                      <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '14.5px', lineHeight: 1.3 }}>
                         {mod.label}
                       </h4>
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          padding: '0.2rem 0.5rem',
-                          borderRadius: '12px',
-                          background: isEnabled ? '#ecfdf5' : '#f1f5f9',
-                          color: isEnabled ? '#059669' : '#64748b',
-                        }}
-                      >
+                      <span className={`status-pill ${isEnabled ? 'badge-emerald' : 'badge-neutral'}`} style={{ whiteSpace: 'nowrap' }}>
                         {isEnabled ? 'ACTIVE' : 'DISABLED'}
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.82rem', color: '#64748b', lineHeight: 1.4, marginBottom: '1rem' }}>
+                    <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '16px' }}>
                       {mod.desc}
                     </p>
                   </div>
 
                   <button
                     onClick={() => handleToggleModule(mod.key)}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      border: 'none',
-                      fontWeight: 600,
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      background: isEnabled ? '#fee2e2' : '#e0e7ff',
-                      color: isEnabled ? '#b91c1c' : '#4338ca',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                    }}
+                    className={isEnabled ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'}
+                    style={{ width: '100%', justifyContent: 'center' }}
                   >
                     {isEnabled ? 'Disable Module' : 'Enable Module'}
                   </button>
@@ -490,54 +620,59 @@ export const SettingsView: React.FC = () => {
 
       {/* Tab 3: Roles & Permissions (RBAC) */}
       {activeTab === 'rbac' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#1e293b' }}>User Roles & Access Control</h3>
-              <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                User Roles & Access Control
+              </h3>
+              <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 Define security privileges for clergy, elders, treasurers, staff, and ministry coordinators.
               </p>
             </div>
             <button
               onClick={() => handleOpenRoleModal()}
               className="btn btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              <Plus size={16} />
+              <Plus size={15} />
               <span>Create Custom Role</span>
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
             {roles.map((role) => (
-              <div key={role.id} className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div
+                key={role.id}
+                className="card"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  padding: '20px',
+                }}
+              >
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Shield size={18} color="#6366f1" />
-                      <h4 style={{ fontWeight: 600, color: '#1e293b' }}>{role.name}</h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Shield size={18} color="var(--gold-400)" />
+                      <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '15px' }}>{role.name}</h4>
                     </div>
-                    {role.is_system ? (
-                      <span style={{ fontSize: '0.7rem', background: '#f1f5f9', color: '#475569', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
-                        SYSTEM
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '0.7rem', background: '#e0e7ff', color: '#4338ca', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 600 }}>
-                        CUSTOM
-                      </span>
-                    )}
+                    <span className={`status-pill ${role.is_system ? 'badge-indigo' : 'badge-purple'}`}>
+                      {role.is_system ? 'SYSTEM' : 'CUSTOM'}
+                    </span>
                   </div>
-                  <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '1rem' }}>
+                  <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.4, marginBottom: '14px' }}>
                     {role.description}
                   </p>
 
-                  <div style={{ marginBottom: '1rem' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
                       Assigned Privileges ({role.permissions.length}):
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '120px', overflowY: 'auto' }}>
                       {role.permissions.map((p) => (
-                        <span key={p} style={{ fontSize: '0.7rem', background: '#eef2ff', color: '#4f46e5', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>
+                        <span key={p} className="status-pill badge-neutral" style={{ fontSize: '11px', padding: '2px 8px' }}>
                           {p}
                         </span>
                       ))}
@@ -545,21 +680,22 @@ export const SettingsView: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px' }}>
                   <button
                     onClick={() => handleOpenRoleModal(role)}
-                    className="btn btn-secondary"
-                    style={{ flex: 1, fontSize: '0.8rem', padding: '0.4rem' }}
+                    className="btn btn-secondary btn-sm"
+                    style={{ flex: 1, justifyContent: 'center' }}
                   >
                     Edit Permissions
                   </button>
                   {!role.is_system && (
                     <button
                       onClick={() => deleteRole(role.id)}
-                      className="btn"
-                      style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', padding: '0.4rem 0.6rem' }}
+                      className="btn btn-danger btn-sm"
+                      style={{ padding: '6px 10px' }}
+                      title="Delete role"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={15} />
                     </button>
                   )}
                 </div>
@@ -571,52 +707,66 @@ export const SettingsView: React.FC = () => {
 
       {/* Tab 4: Localization & Tax Regime */}
       {activeTab === 'localization' && (
-        <div className="card">
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b' }}>
-            Active Jurisdiction & Tax Regime
+        <div className="card" style={{ padding: '24px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+            Active Jurisdiction & Statutory Tax Regime
           </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Toggle between Indian statutory compliance (80G, Form 10BD, FCRA) and Global multi-currency church operations.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+            {/* India Mode Card */}
             <div
               onClick={() => toggleMode('IN')}
               style={{
-                border: mode === 'IN' ? '2px solid #6366f1' : '1px solid #e2e8f0',
-                background: mode === 'IN' ? '#f5f3ff' : '#ffffff',
-                padding: '1.25rem',
-                borderRadius: '8px',
+                border: mode === 'IN' ? '2px solid var(--gold-500)' : '1px solid var(--border-subtle)',
+                background: mode === 'IN' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                padding: '20px',
+                borderRadius: 'var(--radius-sm)',
                 cursor: 'pointer',
+                transition: 'all 0.2s ease',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '1.5rem' }}>🇮🇳</span>
-                <h4 style={{ fontWeight: 700, color: '#1e293b' }}>India (IN) Mode</h4>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '24px' }}>🇮🇳</span>
+                  <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '16px' }}>India (IN) Mode</h4>
+                </div>
+                {mode === 'IN' && <span className="status-pill badge-emerald">ACTIVE</span>}
               </div>
-              <ul style={{ fontSize: '0.8rem', color: '#475569', paddingLeft: '1.2rem', lineHeight: 1.6 }}>
+              <ul style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', lineHeight: 1.8 }}>
                 <li>Section 80G Tax Exemption Certificates</li>
-                <li>Income Tax Form 10BD Annual Return Statement</li>
+                <li>Income Tax Form 10BD Annual Statement</li>
                 <li>FCRA Foreign Inward Remittance Ledger</li>
-                <li>UPI & Razorpay Payment Routing</li>
+                <li>Indian Rupee (₹) & Lakhs/Crores Formatting</li>
                 <li>TRAI DLT SMS & WhatsApp Compliant Templates</li>
               </ul>
             </div>
 
+            {/* Global Mode Card */}
             <div
               onClick={() => toggleMode('GLOBAL')}
               style={{
-                border: mode === 'GLOBAL' ? '2px solid #6366f1' : '1px solid #e2e8f0',
-                background: mode === 'GLOBAL' ? '#f5f3ff' : '#ffffff',
-                padding: '1.25rem',
-                borderRadius: '8px',
+                border: mode === 'GLOBAL' ? '2px solid var(--gold-500)' : '1px solid var(--border-subtle)',
+                background: mode === 'GLOBAL' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                padding: '20px',
+                borderRadius: 'var(--radius-sm)',
                 cursor: 'pointer',
+                transition: 'all 0.2s ease',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <span style={{ fontSize: '1.5rem' }}>🌐</span>
-                <h4 style={{ fontWeight: 700, color: '#1e293b' }}>Global (US / UK / EU) Mode</h4>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '24px' }}>🌐</span>
+                  <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '16px' }}>Global (US / UK / EU) Mode</h4>
+                </div>
+                {mode === 'GLOBAL' && <span className="status-pill badge-emerald">ACTIVE</span>}
               </div>
-              <ul style={{ fontSize: '0.8rem', color: '#475569', paddingLeft: '1.2rem', lineHeight: 1.6 }}>
+              <ul style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', lineHeight: 1.8 }}>
                 <li>IRS 501(c)(3) Donor Contribution Receipts</li>
                 <li>UK HMRC Gift Aid 25% Tax Reclaim Schedule</li>
-                <li>Stripe & PayPal Multi-Currency Gateway</li>
+                <li>Multi-Currency Ledger (USD $, GBP £, EUR €)</li>
                 <li>Twilio A2P 10DLC Carrier Registered Routing</li>
                 <li>GDPR Compliant Privacy & Opt-Out Headers</li>
               </ul>
@@ -627,89 +777,102 @@ export const SettingsView: React.FC = () => {
 
       {/* Role Edit Modal */}
       {showRoleModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div style={{ background: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem', color: '#1e293b' }}>
-              {editingRole ? `Edit Role: ${editingRole.name}` : 'Create New Custom Role'}
-            </h3>
-            <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem' }}>
-              Configure role metadata and select granular permission checkboxes.
-            </p>
+        <div className="modal-overlay" onClick={() => setShowRoleModal(false)}>
+          <div className="modal-dialog-large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">
+                {editingRole ? `Edit Role: ${editingRole.name}` : 'Create New Custom Role'}
+              </h3>
+              <button className="btn btn-icon btn-secondary" onClick={() => setShowRoleModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
 
             <form onSubmit={handleSaveRole}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                    Role Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={roleForm.name}
-                    onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                    placeholder="e.g. Audit Committee / Youth Coordinator"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                    Description
-                  </label>
-                  <input
-                    type="text"
-                    value={roleForm.description}
-                    onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                    placeholder="Brief summary of duties and responsibilities"
-                  />
-                </div>
+              <div className="modal-content">
+                <div className="form-grid">
+                  <div>
+                    <label className="form-label">Role Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={roleForm.name}
+                      onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
+                      className="form-input"
+                      placeholder="e.g. Audit Committee / Youth Coordinator"
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Description</label>
+                    <input
+                      type="text"
+                      value={roleForm.description}
+                      onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
+                      className="form-input"
+                      placeholder="Brief summary of duties and responsibilities"
+                    />
+                  </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '0.75rem' }}>
-                    Granular Access Privileges:
-                  </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.6rem', maxHeight: '280px', overflowY: 'auto', padding: '0.5rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    {availablePermissions.map((perm) => {
-                      const isChecked = roleForm.permissions.includes(perm.key);
-                      return (
-                        <label
-                          key={perm.key}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: '0.5rem',
-                            fontSize: '0.8rem',
-                            color: '#334155',
-                            cursor: 'pointer',
-                            padding: '0.3rem',
-                            borderRadius: '4px',
-                            background: isChecked ? '#eef2ff' : 'transparent',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setRoleForm({ ...roleForm, permissions: [...roleForm.permissions, perm.key] });
-                              } else {
-                                setRoleForm({ ...roleForm, permissions: roleForm.permissions.filter((p) => p !== perm.key) });
-                              }
+                  <div className="form-group-full">
+                    <label className="form-label" style={{ marginBottom: '8px' }}>
+                      Granular Access Privileges:
+                    </label>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                        gap: '8px',
+                        maxHeight: '280px',
+                        overflowY: 'auto',
+                        padding: '12px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border-subtle)',
+                      }}
+                    >
+                      {availablePermissions.map((perm) => {
+                        const isChecked = roleForm.permissions.includes(perm.key);
+                        return (
+                          <label
+                            key={perm.key}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '8px',
+                              fontSize: '12.5px',
+                              color: 'var(--text-primary)',
+                              cursor: 'pointer',
+                              padding: '8px',
+                              borderRadius: 'var(--radius-sm)',
+                              background: isChecked ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+                              border: isChecked ? '1px solid var(--gold-500)' : '1px solid transparent',
                             }}
-                            style={{ marginTop: '0.15rem' }}
-                          />
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{perm.label}</div>
-                            <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{perm.category}</div>
-                          </div>
-                        </label>
-                      );
-                    })}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setRoleForm({ ...roleForm, permissions: [...roleForm.permissions, perm.key] });
+                                } else {
+                                  setRoleForm({ ...roleForm, permissions: roleForm.permissions.filter((p) => p !== perm.key) });
+                                }
+                              }}
+                              style={{ marginTop: '3px' }}
+                            />
+                            <div>
+                              <div style={{ fontWeight: 600 }}>{perm.label}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{perm.category}</div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setShowRoleModal(false)}
@@ -720,9 +883,9 @@ export const SettingsView: React.FC = () => {
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <Save size={16} />
+                  <Save size={15} />
                   <span>Save Role</span>
                 </button>
               </div>

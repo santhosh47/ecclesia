@@ -43,10 +43,12 @@ class IssuedCertificate(Base):
     secondary_name: Mapped[str | None] = mapped_column(String(150), nullable=True)  # Spouse name (for wedding), Parents (for dedication)
     issue_date: Mapped[date] = mapped_column(Date, default=date.today)
     event_date: Mapped[date] = mapped_column(Date, default=date.today)
-    officiant_name: Mapped[str] = mapped_column(String(150), nullable=False)  # e.g. "Rev. Dr. Samuel Thomas"
+    officiant_name: Mapped[str] = mapped_column(String(150), nullable=False)  # e.g. "Pastor Dr. Samuel Thomas"
     witness_1: Mapped[str | None] = mapped_column(String(150), nullable=True)
     witness_2: Mapped[str | None] = mapped_column(String(150), nullable=True)
     church_name: Mapped[str] = mapped_column(String(200), default="St. Luke's Ecclesia Church")
+    church_registration_no: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    church_address: Mapped[str | None] = mapped_column(String(255), nullable=True)
     verification_code: Mapped[str] = mapped_column(String(64), default=lambda: uuid.uuid4().hex[:12].upper(), unique=True, index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     pdf_file_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

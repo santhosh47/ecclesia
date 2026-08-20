@@ -38,15 +38,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenCheckIn,
   onOpenAddPrayer,
 }) => {
-  const { formatCurrency, isIndia } = useLocalization();
+  const { formatCurrency, isIndia, churchProfile } = useLocalization();
   const [copiedId, setCopiedId] = React.useState<number | null>(null);
 
   if (isLoading || !data) {
     return (
-      <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        <div className="church-logo-mark" style={{ margin: '0 auto 16px', animation: 'spin 2s infinite linear' }}>
-          •
-        </div>
+      <div className="loading-state">
+        <div className="spinner"></div>
         <h2>Loading Church Dashboard...</h2>
       </div>
     );
@@ -62,7 +60,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   } = data;
 
   const copyGreeting = (milestone: MilestoneItem) => {
-    let msg = `Dear ${milestone.member_name}, grace and peace to you! Wishing you a blessed and joyous ${milestone.milestone_type}! May the Lord continue to guide, protect, and bless you abundantly! - St. Luke's Ecclesia Church`;
+    let msg = `Dear ${milestone.member_name}, grace and peace to you! Wishing you a blessed and joyous ${milestone.milestone_type}! May the Lord continue to guide, protect, and bless you abundantly! - ${churchProfile.name || 'Ecclesia Church'}`;
     navigator.clipboard.writeText(msg);
     setCopiedId(milestone.member_id);
     setTimeout(() => setCopiedId(null), 2500);
@@ -93,7 +91,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             Church Executive Overview
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>
-            St. Luke's Ecclesia Community • Live Ministry & Financial Health Dashboard ({isIndia ? '🇮🇳 India' : '🌐 Global'})
+            {churchProfile.name || 'Church Community'} • Live Ministry & Financial Health Dashboard ({isIndia ? '🇮🇳 India' : '🌐 Global'})
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>

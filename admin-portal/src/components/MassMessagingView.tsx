@@ -11,13 +11,14 @@ import {
   ShieldCheck,
   Smartphone,
   Users,
+  X,
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useLocalization } from '../context/LocalizationContext';
 import { MessageBroadcast, MessageTemplate } from '../types';
 
 export const MassMessagingView: React.FC = () => {
-  const { isIndia } = useLocalization();
+  const { isIndia, hasPermission } = useLocalization();
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [broadcasts, setBroadcasts] = useState<MessageBroadcast[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -101,179 +102,203 @@ export const MassMessagingView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="view-container">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/70 dark:bg-slate-900/70 p-6 rounded-2xl backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
+      <div className="view-header" style={{ marginBottom: '24px' }}>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-            <Smartphone className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
-            Mass Messaging & WhatsApp Automation
+          <h1 className="view-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Smartphone size={28} color="var(--gold-400)" />
+            <span>Mass Messaging & WhatsApp Automation</span>
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="view-subtitle">
             {isIndia
               ? 'TRAI DLT-compliant SMS templates, WhatsApp Business API broadcasts, and milestone greeting dispatches.'
               : 'Twilio 10DLC compliant SMS, WhatsApp integration, and GDPR-compliant church communication.'}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowTemplateModal(true)}
-            className="flex items-center gap-2 px-3.5 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 transition-all"
-          >
-            <Plus className="h-4 w-4" />
-            New Template
-          </button>
-          <button
-            onClick={() => setShowBroadcastModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all"
-          >
-            <Send className="h-4 w-4" />
-            Dispatch Broadcast
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {hasPermission('manage_messaging') && (
+            <>
+              <button
+                onClick={() => setShowTemplateModal(true)}
+                className="btn btn-secondary"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Plus size={15} />
+                <span>New Template</span>
+              </button>
+              <button
+                onClick={() => setShowBroadcastModal(true)}
+                className="btn btn-primary"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Send size={15} />
+                <span>Dispatch Broadcast</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6">
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '24px' }}>
         <button
           onClick={() => setActiveTab('broadcasts')}
-          className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
-            activeTab === 'broadcasts'
-              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-              : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
-          }`}
+          className="btn"
+          style={{
+            background: activeTab === 'broadcasts' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'broadcasts' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'broadcasts' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
         >
-          <Radio className="h-4 w-4" />
-          Broadcast History ({broadcasts.length})
+          <Radio size={16} />
+          <span>Broadcast History ({broadcasts.length})</span>
         </button>
         <button
           onClick={() => setActiveTab('templates')}
-          className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
-            activeTab === 'templates'
-              ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-              : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
-          }`}
+          className="btn"
+          style={{
+            background: activeTab === 'templates' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'templates' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'templates' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
         >
-          <MessageSquare className="h-4 w-4" />
-          Registered Templates ({templates.length})
+          <MessageSquare size={16} />
+          <span>Registered Templates ({templates.length})</span>
         </button>
       </div>
 
       {/* Tab 1: Broadcast History */}
       {activeTab === 'broadcasts' && (
-        <div className="space-y-4">
-          {broadcasts.map((bc) => (
-            <div
-              key={bc.id}
-              className="bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-5 shadow-sm space-y-4"
-            >
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <span className="p-2 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 rounded-xl">
-                    <MessageSquare className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white text-base">{bc.title}</h4>
-                    <p className="text-xs text-slate-500">
-                      Channel: <span className="font-semibold text-emerald-600">{bc.channel}</span> | Target:{' '}
-                      <span className="font-semibold">{bc.target_group}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {broadcasts.length === 0 ? (
+            <div className="card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No message broadcasts dispatched yet.
+            </div>
+          ) : (
+            broadcasts.map((bc) => (
+              <div key={bc.id} className="card" style={{ padding: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', paddingBottom: '14px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ padding: '10px', borderRadius: 'var(--radius-md)', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+                      <MessageSquare size={20} />
+                    </div>
+                    <div>
+                      <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '15px' }}>{bc.title}</h4>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        Channel: <strong style={{ color: '#34d399' }}>{bc.channel}</strong> • Target:{' '}
+                        <strong style={{ color: 'var(--text-primary)' }}>{bc.target_group}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '12px' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Sent At</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        {new Date(bc.sent_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <span className="status-pill badge-emerald">
+                      {bc.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Delivery Stats Bar */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginTop: '16px' }}>
+                  <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-subtle)', textAlign: 'center' }}>
+                    <span style={{ fontSize: '10.5px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Total Recipients</span>
+                    <p style={{ fontSize: '20px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--text-primary)', marginTop: '4px' }}>
+                      {bc.total_recipients}
+                    </p>
+                  </div>
+                  <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.2)', textAlign: 'center' }}>
+                    <span style={{ fontSize: '10.5px', textTransform: 'uppercase', color: '#34d399', fontWeight: 600 }}>Delivered</span>
+                    <p style={{ fontSize: '20px', fontWeight: 800, fontFamily: 'monospace', color: '#34d399', marginTop: '4px' }}>
+                      {bc.delivered_count}
+                    </p>
+                  </div>
+                  <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.2)', textAlign: 'center' }}>
+                    <span style={{ fontSize: '10.5px', textTransform: 'uppercase', color: '#fb7185', fontWeight: 600 }}>Failed</span>
+                    <p style={{ fontSize: '20px', fontWeight: 800, fontFamily: 'monospace', color: '#fb7185', marginTop: '4px' }}>
+                      {bc.failed_count}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 text-xs">
-                  <div className="text-right">
-                    <span className="text-slate-400 block">Sent At</span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">
-                      {new Date(bc.sent_at).toLocaleString()}
+                {/* Delivery Logs Preview */}
+                {bc.logs && bc.logs.length > 0 && (
+                  <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
+                      Sample Delivery Receipts
                     </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {bc.logs.slice(0, 3).map((log) => (
+                        <div
+                          key={log.id}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', padding: '8px 12px', borderRadius: 'var(--radius-sm)', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-subtle)' }}
+                        >
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {log.recipient_name} ({log.recipient_contact})
+                          </span>
+                          <span style={{ color: '#34d399', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600, fontSize: '11.5px' }}>
+                            <CheckCircle2 size={13} /> {log.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold rounded-lg">
-                    {bc.status}
-                  </span>
-                </div>
+                )}
               </div>
-
-              {/* Delivery Stats Bar */}
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                  <span className="text-[11px] text-slate-500 font-medium uppercase">Total Recipients</span>
-                  <p className="text-xl font-bold font-mono text-slate-900 dark:text-white mt-1">
-                    {bc.total_recipients}
-                  </p>
-                </div>
-                <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl">
-                  <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium uppercase">
-                    Delivered
-                  </span>
-                  <p className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
-                    {bc.delivered_count}
-                  </p>
-                </div>
-                <div className="p-3 bg-rose-50/60 dark:bg-rose-950/30 rounded-xl">
-                  <span className="text-[11px] text-rose-700 dark:text-rose-400 font-medium uppercase">Failed</span>
-                  <p className="text-xl font-bold font-mono text-rose-600 dark:text-rose-400 mt-1">
-                    {bc.failed_count}
-                  </p>
-                </div>
-              </div>
-
-              {/* Delivery Logs Preview */}
-              {bc.logs && bc.logs.length > 0 && (
-                <div className="pt-2">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
-                    Delivery Log Snippet
-                  </span>
-                  <div className="space-y-1.5">
-                    {bc.logs.slice(0, 3).map((log) => (
-                      <div
-                        key={log.id}
-                        className="flex justify-between items-center text-xs p-2 bg-slate-50/70 dark:bg-slate-800/40 rounded-lg"
-                      >
-                        <span className="font-medium text-slate-800 dark:text-slate-200">
-                          {log.recipient_name} ({log.recipient_contact})
-                        </span>
-                        <span className="font-mono text-emerald-600 flex items-center gap-1 font-semibold">
-                          <CheckCircle2 className="h-3 w-3" /> {log.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+            ))
+          )}
         </div>
       )}
 
       {/* Tab 2: Registered Templates */}
       {activeTab === 'templates' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
           {templates.map((tmpl) => (
             <div
               key={tmpl.id}
-              className="bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-5 shadow-sm space-y-3 flex flex-col justify-between"
+              className="card"
+              style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}
             >
-              <div className="space-y-2">
-                <div className="flex justify-between items-start">
-                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">{tmpl.name}</h4>
-                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-bold rounded uppercase">
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                  <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px' }}>{tmpl.name}</h4>
+                  <span className="status-pill badge-emerald" style={{ fontSize: '10px' }}>
                     {tmpl.channel}
                   </span>
                 </div>
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs text-slate-700 dark:text-slate-300 font-mono">
+                <div style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'rgba(0, 0, 0, 0.25)', border: '1px solid var(--border-subtle)', fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
                   {tmpl.body_text}
                 </div>
               </div>
 
               {isIndia && tmpl.trai_dlt_template_id && (
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 space-y-0.5">
-                  <div className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 font-semibold">
-                    <ShieldCheck className="h-3.5 w-3.5" />
+                <div style={{ paddingTop: '10px', borderTop: '1px solid var(--border-subtle)', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#60a5fa', fontWeight: 600, marginBottom: '2px' }}>
+                    <ShieldCheck size={14} />
                     <span>TRAI DLT Verified</span>
                   </div>
-                  <p className="font-mono">DLT ID: {tmpl.trai_dlt_template_id}</p>
-                  <p className="font-mono">Header: {tmpl.trai_sender_header || 'ECCLSA'}</p>
+                  <p className="cell-mono" style={{ margin: '2px 0' }}>DLT ID: {tmpl.trai_dlt_template_id}</p>
+                  <p className="cell-mono" style={{ margin: '2px 0' }}>Header: {tmpl.trai_sender_header || 'ECCLSA'}</p>
                 </div>
               )}
             </div>
@@ -283,120 +308,112 @@ export const MassMessagingView: React.FC = () => {
 
       {/* Modal: Dispatch Broadcast */}
       {showBroadcastModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Send className="h-5 w-5 text-emerald-600" />
-                Dispatch Mass Broadcast
+        <div className="modal-overlay" onClick={() => setShowBroadcastModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Send size={18} color="#34d399" />
+                <span>Dispatch Mass Broadcast</span>
               </h3>
-              <button
-                onClick={() => setShowBroadcastModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                ✕
+              <button className="btn btn-icon btn-secondary" onClick={() => setShowBroadcastModal(false)}>
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSendBroadcast} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Broadcast Campaign Title *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., Harvest Festival Reminder or Sunday Livestream Link"
-                  value={broadcastTitle}
-                  onChange={(e) => setBroadcastTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </div>
+            <form onSubmit={handleSendBroadcast}>
+              <div className="modal-content">
+                <div className="form-grid" style={{ marginBottom: '14px' }}>
+                  <div className="form-group-full">
+                    <label className="form-label">Broadcast Campaign Title *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g., Sunday Livestream Link or Harvest Festival Reminder"
+                      value={broadcastTitle}
+                      onChange={(e) => setBroadcastTitle(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Delivery Channel
-                  </label>
-                  <select
-                    value={broadcastChannel}
-                    onChange={(e) => setBroadcastChannel(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  >
-                    <option value="WhatsApp">WhatsApp API</option>
-                    <option value="SMS">SMS Gateway (DLT Compliant)</option>
-                    <option value="Email">Email Digest</option>
-                  </select>
+                  <div>
+                    <label className="form-label">Delivery Channel</label>
+                    <select
+                      value={broadcastChannel}
+                      onChange={(e) => setBroadcastChannel(e.target.value)}
+                      className="form-select"
+                    >
+                      <option value="WhatsApp">WhatsApp API</option>
+                      <option value="SMS">SMS Gateway (DLT Compliant)</option>
+                      <option value="Email">Email Digest</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">Target Audience Group</label>
+                    <select
+                      value={broadcastAudience}
+                      onChange={(e) => setBroadcastAudience(e.target.value)}
+                      className="form-select"
+                    >
+                      <option value="All Active Members">All Active Members</option>
+                      <option value="Ward 1 - Koramangala">Ward 1 - Koramangala</option>
+                      <option value="Ward 2 - Indiranagar">Ward 2 - Indiranagar</option>
+                      <option value="Youth Fellowship">Youth Fellowship</option>
+                      <option value="Choir & Musicians">Choir & Worship Team</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group-full">
+                    <label className="form-label">Select Registered Template</label>
+                    <select
+                      value={selectedTemplateId}
+                      onChange={(e) => {
+                        const tmplId = Number(e.target.value);
+                        setSelectedTemplateId(tmplId);
+                        const selected = templates.find((t) => t.id === tmplId);
+                        if (selected) setCustomMessageText(selected.body_text);
+                      }}
+                      className="form-select"
+                    >
+                      <option value={0}>-- Custom One-Off Message --</option>
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({t.channel})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group-full">
+                    <label className="form-label">Message Content (Tags: &#123;&#123;first_name&#125;&#125;, &#123;&#123;church_name&#125;&#125;)</label>
+                    <textarea
+                      rows={4}
+                      required
+                      value={customMessageText}
+                      onChange={(e) => setCustomMessageText(e.target.value)}
+                      className="form-input"
+                      style={{ fontFamily: 'monospace', fontSize: '13px' }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Target Audience Group
-                  </label>
-                  <select
-                    value={broadcastAudience}
-                    onChange={(e) => setBroadcastAudience(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  >
-                    <option value="All Active Members">All Active Members</option>
-                    <option value="Ward 1 - Koramangala">Ward 1 - Koramangala</option>
-                    <option value="Ward 2 - Indiranagar">Ward 2 - Indiranagar</option>
-                    <option value="Youth Fellowship">Youth Fellowship</option>
-                    <option value="Choir & Musicians">Choir & Worship Team</option>
-                  </select>
-                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Select Registered Template
-                </label>
-                <select
-                  value={selectedTemplateId}
-                  onChange={(e) => {
-                    const tmplId = Number(e.target.value);
-                    setSelectedTemplateId(tmplId);
-                    const selected = templates.find((t) => t.id === tmplId);
-                    if (selected) setCustomMessageText(selected.body_text);
-                  }}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                >
-                  <option value={0}>-- Custom One-Off Message --</option>
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.channel})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Message Content (Tags: &#123;&#123;first_name&#125;&#125;, &#123;&#123;church_name&#125;&#125;)
-                </label>
-                <textarea
-                  rows={4}
-                  required
-                  value={customMessageText}
-                  onChange={(e) => setCustomMessageText(e.target.value)}
-                  className="w-full px-3.5 py-2 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setShowBroadcastModal(false)}
-                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={sending}
-                  className="px-5 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl shadow-sm flex items-center gap-1.5"
+                  className="btn btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <Send className="h-4 w-4" />
-                  {sending ? 'Sending...' : 'Dispatch Now'}
+                  <Send size={15} />
+                  <span>{sending ? 'Sending...' : 'Dispatch Now'}</span>
                 </button>
               </div>
             </form>
@@ -406,117 +423,110 @@ export const MassMessagingView: React.FC = () => {
 
       {/* Modal: Create Template */}
       {showTemplateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Register Message Template</h3>
-              <button
-                onClick={() => setShowTemplateModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                ✕
+        <div className="modal-overlay" onClick={() => setShowTemplateModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Register Message Template</h3>
+              <button className="btn btn-icon btn-secondary" onClick={() => setShowTemplateModal(false)}>
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTemplate} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Template Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., Weekly Tithe Acknowledgement"
-                  value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Channel</label>
-                  <select
-                    value={templateChannel}
-                    onChange={(e) => setTemplateChannel(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  >
-                    <option value="WhatsApp">WhatsApp</option>
-                    <option value="SMS">SMS</option>
-                    <option value="Email">Email</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={templateCategory}
-                    onChange={(e) => setTemplateCategory(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  >
-                    <option value="General">General</option>
-                    <option value="Pastoral">Pastoral</option>
-                    <option value="Compliance">Compliance</option>
-                    <option value="Liturgical">Liturgical</option>
-                  </select>
-                </div>
-              </div>
-
-              {isIndia && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      TRAI DLT Template ID
-                    </label>
+            <form onSubmit={handleCreateTemplate}>
+              <div className="modal-content">
+                <div className="form-grid">
+                  <div className="form-group-full">
+                    <label className="form-label">Template Name *</label>
                     <input
                       type="text"
-                      placeholder="14071612..."
-                      value={traiDltId}
-                      onChange={(e) => setTraiDltId(e.target.value)}
-                      className="w-full px-3 py-2 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      required
+                      placeholder="e.g., Weekly Tithe Acknowledgement"
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      className="form-input"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Header / Sender
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="ECCLSA"
-                      value={traiHeader}
-                      onChange={(e) => setTraiHeader(e.target.value)}
-                      className="w-full px-3 py-2 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    <label className="form-label">Channel</label>
+                    <select
+                      value={templateChannel}
+                      onChange={(e) => setTemplateChannel(e.target.value)}
+                      className="form-select"
+                    >
+                      <option value="WhatsApp">WhatsApp</option>
+                      <option value="SMS">SMS</option>
+                      <option value="Email">Email</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">Category</label>
+                    <select
+                      value={templateCategory}
+                      onChange={(e) => setTemplateCategory(e.target.value)}
+                      className="form-select"
+                    >
+                      <option value="General">General</option>
+                      <option value="Pastoral">Pastoral</option>
+                      <option value="Compliance">Compliance</option>
+                      <option value="Liturgical">Liturgical</option>
+                    </select>
+                  </div>
+
+                  {isIndia && (
+                    <>
+                      <div>
+                        <label className="form-label">TRAI DLT Template ID</label>
+                        <input
+                          type="text"
+                          placeholder="14071612..."
+                          value={traiDltId}
+                          onChange={(e) => setTraiDltId(e.target.value)}
+                          className="form-input"
+                          style={{ fontFamily: 'monospace' }}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">Header / Sender</label>
+                        <input
+                          type="text"
+                          placeholder="ECCLSA"
+                          value={traiHeader}
+                          onChange={(e) => setTraiHeader(e.target.value)}
+                          className="form-input"
+                          style={{ fontFamily: 'monospace' }}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="form-group-full">
+                    <label className="form-label">Message Body</label>
+                    <textarea
+                      rows={3}
+                      required
+                      placeholder="Dear {{first_name}}, ..."
+                      value={templateBody}
+                      onChange={(e) => setTemplateBody(e.target.value)}
+                      className="form-input"
+                      style={{ fontFamily: 'monospace' }}
                     />
                   </div>
                 </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Message Body
-                </label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Dear {{first_name}}, ..."
-                  value={templateBody}
-                  onChange={(e) => setTemplateBody(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setShowTemplateModal(false)}
-                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
+                  className="btn btn-primary"
                 >
                   Save Template
                 </button>

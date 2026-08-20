@@ -86,15 +86,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
-            <div className="church-logo-mark">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden', flex: 1, minWidth: 0 }}>
+            <div className="church-logo-mark" style={{ flexShrink: 0 }}>
               {churchProfile.name.charAt(0) || 'E'}
             </div>
-            <div className="church-brand" style={{ minWidth: 0 }}>
-              <h1 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '1rem' }} title={churchProfile.name}>
-                {churchProfile.name.split(' ')[0] || 'ECCLESIA'}
+            <div className="church-brand" style={{ minWidth: 0, flex: 1 }}>
+              <h1 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.95rem', fontWeight: 800 }} title={churchProfile.name}>
+                {churchProfile.name || 'ECCLESIA'}
               </h1>
-              <p style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.75rem' }}>
+              <p style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.75rem', color: 'var(--text-muted)' }} title={churchProfile.senior_pastor}>
                 {churchProfile.senior_pastor || 'Enterprise ChMS'}
               </p>
             </div>

@@ -10,6 +10,7 @@ import {
   Trash2,
   User,
   Users,
+  X,
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useLocalization } from '../context/LocalizationContext';
@@ -118,26 +119,26 @@ export const ChurchCalendarView: React.FC = () => {
     }
   };
 
-  const getCategoryColor = (cat: string) => {
+  const getCategoryTheme = (cat: string) => {
     switch (cat) {
       case 'Worship Service':
-        return { bg: '#e0e7ff', text: '#3730a3', border: '#818cf8' };
+        return { badgeClass: 'badge-amber', accent: 'var(--gold-400)' };
       case 'Prayer Meeting':
-        return { bg: '#fef3c7', text: '#92400e', border: '#fcd34d' };
+        return { badgeClass: 'badge-purple', accent: '#a78bfa' };
       case 'Bible Study':
-        return { bg: '#ecfdf5', text: '#065f46', border: '#6ee7b7' };
+        return { badgeClass: 'badge-emerald', accent: '#34d399' };
       case 'Choir Practice':
-        return { bg: '#fae8ff', text: '#86198f', border: '#f0abfc' };
+        return { badgeClass: 'badge-blue', accent: '#60a5fa' };
       case 'Committee Meeting':
-        return { bg: '#f1f5f9', text: '#334155', border: '#cbd5e1' };
+        return { badgeClass: 'badge-neutral', accent: '#94a3b8' };
       case 'Youth Fellowship':
-        return { bg: '#ffedd5', text: '#9a3412', border: '#fdba74' };
+        return { badgeClass: 'badge-preacher', accent: '#fdba74' };
       case 'Community Outreach':
-        return { bg: '#dcfce7', text: '#166534', border: '#86efac' };
+        return { badgeClass: 'badge-minister', accent: '#6ee7b7' };
       case 'Special Conference':
-        return { bg: '#ede9fe', text: '#5b21b6', border: '#c4b5fd' };
+        return { badgeClass: 'badge-elder', accent: '#c4b5fd' };
       default:
-        return { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' };
+        return { badgeClass: 'badge-neutral', accent: 'var(--gold-400)' };
     }
   };
 
@@ -148,7 +149,7 @@ export const ChurchCalendarView: React.FC = () => {
         <div>
           <h1 className="view-title">Church Activities & Events Calendar</h1>
           <p className="view-subtitle">
-            Schedule and coordinate regular weekly services, prayer meetings, choir rehearsals, committee boards, and special church conferences.
+            Schedule and coordinate regular weekly services, prayer meetings, choir rehearsals, committee boards, and special church gatherings.
           </p>
         </div>
         {hasPermission('manage_calendar') && (
@@ -164,23 +165,21 @@ export const ChurchCalendarView: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '16px 20px', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <Filter size={16} color="#64748b" />
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Filter Category:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '4px' }}>
+            <Filter size={15} color="var(--gold-400)" />
+            <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-secondary)' }}>Category:</span>
+          </div>
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setFilterCategory(cat)}
+              className={filterCategory === cat ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
               style={{
-                padding: '0.35rem 0.75rem',
-                borderRadius: '20px',
-                border: 'none',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                background: filterCategory === cat ? '#6366f1' : '#f1f5f9',
-                color: filterCategory === cat ? '#ffffff' : '#475569',
+                fontSize: '11.5px',
+                padding: '4px 12px',
+                borderRadius: 'var(--radius-full)',
               }}
             >
               {cat}
@@ -188,12 +187,13 @@ export const ChurchCalendarView: React.FC = () => {
           ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Type:</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>Frequency:</span>
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            style={{ padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+            className="form-select"
+            style={{ width: 'auto', padding: '6px 12px', fontSize: '12.5px' }}
           >
             <option value="All">All Frequencies</option>
             <option value="Regular Weekly">Regular Weekly</option>
@@ -205,19 +205,19 @@ export const ChurchCalendarView: React.FC = () => {
 
       {/* Activities Grid */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Loading church calendar...</div>
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Loading church calendar...</div>
       ) : activities.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-          <CalendarIcon size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
-          <h3>No Church Activities Scheduled</h3>
-          <p style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>
+        <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+          <CalendarIcon size={48} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
+          <h3 style={{ color: 'var(--text-primary)', fontWeight: 700 }}>No Church Activities Scheduled</h3>
+          <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}>
             Click "Schedule Activity" above to schedule worship services, rehearsals, or special church gatherings.
           </p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.25rem' }}>
           {activities.map((act) => {
-            const catColors = getCategoryColor(act.category);
+            const theme = getCategoryTheme(act.category);
             const dateObj = new Date(act.starts_at);
             return (
               <div
@@ -227,89 +227,87 @@ export const ChurchCalendarView: React.FC = () => {
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  borderTop: `4px solid ${catColors.border}`,
+                  borderTop: `3px solid ${theme.accent}`,
+                  padding: '20px',
+                  gap: '16px',
                 }}
               >
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        padding: '0.2rem 0.6rem',
-                        borderRadius: '12px',
-                        background: catColors.bg,
-                        color: catColors.text,
-                      }}
-                    >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <span className={`status-pill ${theme.badgeClass}`}>
                       {act.category}
                     </span>
-                    {act.is_recurring && (
-                      <span style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#6366f1', fontWeight: 600 }}>
-                        <Repeat size={12} />
-                        Recurring
+                    {act.is_recurring ? (
+                      <span className="status-pill badge-neutral" style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <Repeat size={11} color="var(--gold-400)" />
+                        <span>Recurring</span>
+                      </span>
+                    ) : (
+                      <span className="status-pill status-visitor" style={{ fontSize: '11px' }}>
+                        {act.activity_type}
                       </span>
                     )}
                   </div>
 
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.6rem' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', lineHeight: 1.35 }}>
                     {act.title}
                   </h3>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.85rem', color: '#475569', marginBottom: '0.85rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <CalendarIcon size={15} color="#6366f1" />
-                      <span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <CalendarIcon size={14} color="var(--gold-400)" />
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                         {dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Clock size={15} color="#6366f1" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Clock size={14} color="var(--gold-400)" />
                       <span>
                         {dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                         {act.ends_at && ` - ${new Date(act.ends_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}
                       </span>
                     </div>
                     {act.location && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <MapPin size={15} color="#6366f1" />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <MapPin size={14} color="var(--gold-400)" />
                         <span>{act.location}</span>
                       </div>
                     )}
                     {act.organizer_name && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <User size={15} color="#6366f1" />
-                        <span>Led by: {act.organizer_name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <User size={14} color="var(--gold-400)" />
+                        <span>Leader: <strong style={{ color: 'var(--text-primary)' }}>{act.organizer_name}</strong></span>
                       </div>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <Users size={15} color="#6366f1" />
-                      <span>Audience: {act.target_group}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Users size={14} color="var(--gold-400)" />
+                      <span>Target: {act.target_group}</span>
                     </div>
                   </div>
 
                   {act.recurrence_pattern && (
-                    <div style={{ fontSize: '0.8rem', background: '#f8fafc', padding: '0.4rem 0.6rem', borderRadius: '6px', color: '#64748b', marginBottom: '0.75rem' }}>
-                      🔄 {act.recurrence_pattern}
+                    <div style={{ marginTop: '12px', fontSize: '11.5px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', color: 'var(--gold-400)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Repeat size={12} />
+                      <span>{act.recurrence_pattern}</span>
                     </div>
                   )}
 
                   {act.description && (
-                    <p style={{ fontSize: '0.83rem', color: '#64748b', lineHeight: 1.4, marginBottom: '1rem' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.45, marginTop: '10px' }}>
                       {act.description}
                     </p>
                   )}
                 </div>
 
                 {hasPermission('manage_calendar') && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px', marginTop: '4px' }}>
                     <button
                       onClick={() => handleDeleteActivity(act.id)}
-                      className="btn"
-                      style={{ color: '#ef4444', background: '#fef2f2', border: 'none', padding: '0.35rem 0.6rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                      className="btn btn-icon btn-danger btn-sm"
+                      title="Delete Activity"
                     >
                       <Trash2 size={14} />
-                      <span>Delete</span>
+                      <span style={{ fontSize: '11.5px', marginLeft: '4px' }}>Delete</span>
                     </button>
                   </div>
                 )}
@@ -321,40 +319,41 @@ export const ChurchCalendarView: React.FC = () => {
 
       {/* Add Church Activity Modal */}
       {showAddModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div style={{ background: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', color: '#1e293b' }}>
-              Schedule Church Activity or Service
-            </h3>
-            <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem' }}>
-              Add a regular weekly service, rehearsal, committee meeting, or special conference to the parish calendar.
-            </p>
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal-dialog modal-dialog-large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title">Schedule Church Activity or Service</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  Add a regular weekly service, rehearsal, committee meeting, or special conference to the parish calendar.
+                </p>
+              </div>
+              <button className="btn btn-icon btn-secondary" onClick={() => setShowAddModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
 
             <form onSubmit={handleCreateActivity}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginBottom: '1.25rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                    Activity / Service Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                    placeholder="e.g. Sunday Morning Holy Communion Service"
-                  />
-                </div>
+              <div className="modal-content">
+                <div className="form-grid" style={{ marginBottom: '16px' }}>
+                  <div className="form-group-full">
+                    <label className="form-label">Activity / Service Title *</label>
+                    <input
+                      type="text"
+                      required
+                      className="form-input"
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      placeholder="e.g. Sunday Morning Holy Communion Service"
+                    />
+                  </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                      Category
-                    </label>
+                    <label className="form-label">Category</label>
                     <select
+                      className="form-select"
                       value={form.category}
                       onChange={(e) => setForm({ ...form, category: e.target.value })}
-                      style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
                     >
                       {categories.filter((c) => c !== 'All').map((c) => (
                         <option key={c} value={c}>
@@ -363,14 +362,13 @@ export const ChurchCalendarView: React.FC = () => {
                       ))}
                     </select>
                   </div>
+
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                      Frequency
-                    </label>
+                    <label className="form-label">Frequency</label>
                     <select
+                      className="form-select"
                       value={form.activity_type}
                       onChange={(e) => setForm({ ...form, activity_type: e.target.value })}
-                      style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
                     >
                       <option value="Regular Weekly">Regular Weekly</option>
                       <option value="Monthly">Monthly</option>
@@ -378,103 +376,86 @@ export const ChurchCalendarView: React.FC = () => {
                       <option value="Annual">Annual Gathering</option>
                     </select>
                   </div>
-                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                      Starts At *
-                    </label>
+                    <label className="form-label">Starts At *</label>
                     <input
                       type="datetime-local"
                       required
+                      className="form-input"
                       value={form.starts_at}
                       onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
-                      style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
                     />
                   </div>
+
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                      Ends At
-                    </label>
+                    <label className="form-label">Ends At</label>
                     <input
                       type="datetime-local"
+                      className="form-input"
                       value={form.ends_at}
                       onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
-                      style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
                     />
                   </div>
-                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                      Location / Room
-                    </label>
+                    <label className="form-label">Location / Sanctuary / Room</label>
                     <input
                       type="text"
+                      className="form-input"
                       value={form.location}
                       onChange={(e) => setForm({ ...form, location: e.target.value })}
-                      style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
                       placeholder="e.g. Main Sanctuary / Fellowship Hall"
                     />
                   </div>
+
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                      Leader / Organizer
-                    </label>
+                    <label className="form-label">Leader / Organizer Name</label>
                     <input
                       type="text"
+                      className="form-input"
                       value={form.organizer_name}
                       onChange={(e) => setForm({ ...form, organizer_name: e.target.value })}
-                      style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                      placeholder="e.g. Rev. Dr. Samuel Thomas"
+                      placeholder="e.g. Pastor Dr. Samuel Thomas"
                     />
                   </div>
-                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                      Target Group
-                    </label>
+                    <label className="form-label">Target Audience</label>
                     <input
                       type="text"
+                      className="form-input"
                       value={form.target_group}
                       onChange={(e) => setForm({ ...form, target_group: e.target.value })}
-                      style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                      placeholder="e.g. All Congregation / Youth"
+                      placeholder="e.g. All Congregation / Youth / Choir"
                     />
                   </div>
+
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                      Recurrence Pattern
-                    </label>
+                    <label className="form-label">Recurrence Description</label>
                     <input
                       type="text"
+                      className="form-input"
                       value={form.recurrence_pattern}
                       onChange={(e) => setForm({ ...form, recurrence_pattern: e.target.value })}
-                      style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
                       placeholder="e.g. Weekly on Sundays at 9:00 AM"
                     />
                   </div>
-                </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                    Description & Order of Service
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                    placeholder="Brief notes, lectionary readings, or choir anthem names"
-                  />
+                  <div className="form-group-full">
+                    <label className="form-label">Description & Order of Service</label>
+                    <textarea
+                      rows={2}
+                      className="form-textarea"
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      placeholder="Brief notes, scripture reading, or service details"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}

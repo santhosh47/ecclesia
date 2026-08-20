@@ -1,25 +1,53 @@
 import React, { useEffect, useState } from 'react';
 import {
   Award,
+  Building2,
   CheckCircle2,
   Download,
   Eye,
   FileCheck,
   FileText,
+  Filter,
   Plus,
   QrCode,
   Search,
   ShieldCheck,
+  Sparkles,
+  X,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useLocalization } from '../context/LocalizationContext';
 import { CertificateTemplate, IssuedCertificate, Member } from '../types';
 
 export const CertificatesView: React.FC = () => {
+  const { config, churchProfile, hasPermission } = useLocalization();
   const [issuedCerts, setIssuedCerts] = useState<IssuedCertificate[]>([]);
   const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [filterType, setFilterType] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Church Registration details configured
+  const defaultOrg = churchProfile || config?.organization;
+  const [churchName, setChurchName] = useState<string>(defaultOrg?.name || 'ECCLESIA');
+  const [churchRegNo, setChurchRegNo] = useState<string>(
+    defaultOrg?.tax_id_in_80g || defaultOrg?.pan_number || defaultOrg?.us_ein || defaultOrg?.uk_charity_number || ''
+  );
+  const [churchAddress, setChurchAddress] = useState<string>(
+    defaultOrg?.address || ''
+  );
+
+  // Sync if organization config updates
+  useEffect(() => {
+    if (churchProfile) {
+      if (churchProfile.name) setChurchName(churchProfile.name);
+      const reg = churchProfile.tax_id_in_80g || churchProfile.pan_number || churchProfile.us_ein || churchProfile.uk_charity_number || '';
+      setChurchRegNo(reg);
+      const addr = [churchProfile.address, churchProfile.city, churchProfile.state, churchProfile.postal_code].filter(Boolean).join(', ');
+      setChurchAddress(addr || churchProfile.address || '');
+    }
+  }, [churchProfile]);
 
   // Issue Certificate Modal
   const [showIssueModal, setShowIssueModal] = useState<boolean>(false);
@@ -27,10 +55,12 @@ export const CertificatesView: React.FC = () => {
   const [recipientName, setRecipientName] = useState<string>('');
   const [secondaryName, setSecondaryName] = useState<string>('');
   const [eventDate, setEventDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [officiantName, setOfficiantName] = useState<string>('Rev. Dr. Samuel Thomas');
+  const [officiantName, setOfficiantName] = useState<string>(defaultOrg?.senior_pastor || 'Pastor Dr. Samuel Thomas');
   const [witness1, setWitness1] = useState<string>('');
   const [witness2, setWitness2] = useState<string>('');
   const [memberId, setMemberId] = useState<number | undefined>(undefined);
+  const [customRegNo, setCustomRegNo] = useState<string>('');
+  const [customAddress, setCustomAddress] = useState<string>('');
 
   // Verification Tool State
   const [verifyCode, setVerifyCode] = useState<string>('');
@@ -70,6 +100,9 @@ export const CertificatesView: React.FC = () => {
         officiant_name: officiantName,
         witness_1: witness1 || undefined,
         witness_2: witness2 || undefined,
+        church_name: churchName,
+        church_registration_no: customRegNo || churchRegNo || undefined,
+        church_address: customAddress || churchAddress || undefined,
         member_id: memberId,
       });
       setShowIssueModal(false);
@@ -77,6 +110,8 @@ export const CertificatesView: React.FC = () => {
       setSecondaryName('');
       setWitness1('');
       setWitness2('');
+      setCustomRegNo('');
+      setCustomAddress('');
       loadData();
     } catch (err: any) {
       alert(err.message || 'Failed to issue certificate');
@@ -97,105 +132,155 @@ export const CertificatesView: React.FC = () => {
     }
   };
 
+  const filteredCerts = issuedCerts.filter((c) => {
+    const q = searchTerm.toLowerCase();
+    return (
+      c.certificate_number.toLowerCase().includes(q) ||
+      c.recipient_name.toLowerCase().includes(q) ||
+      (c.secondary_name && c.secondary_name.toLowerCase().includes(q)) ||
+      c.officiant_name.toLowerCase().includes(q) ||
+      c.verification_code.toLowerCase().includes(q) ||
+      c.certificate_type.toLowerCase().includes(q)
+    );
+  });
+
   return (
-    <div className="space-y-6">
+    <div className="view-container">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/70 dark:bg-slate-900/70 p-6 rounded-2xl backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
+      <div className="view-header" style={{ marginBottom: '24px' }}>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-            <Award className="h-7 w-7 text-amber-600 dark:text-amber-400" />
-            Milestone Certificates & Dynamic PDF Engine
+          <h1 className="view-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Award size={28} color="var(--gold-400)" />
+            <span>Milestone Certificates & Dynamic PDF Engine</span>
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Dynamic PDF generation for Holy Baptism, Matrimony, Child Dedication, Confirmation, and Membership.
+          <p className="view-subtitle">
+            Generate and verify official church certificates for Holy Baptism, Matrimony, Child Dedication, Confirmation, and Membership.
           </p>
         </div>
-        <button
-          onClick={() => setShowIssueModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all"
-        >
-          <Plus className="h-4 w-4" />
-          Issue Official Certificate
-        </button>
+        {hasPermission('manage_certificates') && (
+          <button onClick={() => setShowIssueModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Plus size={16} />
+            <span>Issue Official Certificate</span>
+          </button>
+        )}
       </div>
 
-      {/* Verification & Templates Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Verification Widget */}
-        <div className="bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-5 shadow-sm space-y-4">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm">Certificate Verification Tool</h3>
+      {/* Church Registration Details Banner */}
+      <div className="card" style={{ marginBottom: '24px', padding: '18px 24px', borderLeft: '4px solid var(--gold-500)', background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(13, 19, 34, 0.6) 100%)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ padding: '10px', borderRadius: 'var(--radius-md)', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--gold-400)' }}>
+              <Building2 size={24} />
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--gold-400)', fontWeight: 700 }}>
+                Certificate Header & Legal Registration Details
+              </div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                {churchName}
+              </div>
+              <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                Reg / Trust No: <strong style={{ color: 'var(--text-primary)' }}>{churchRegNo || 'Not Configured'}</strong> • Address: <span style={{ color: 'var(--text-primary)' }}>{churchAddress}</span>
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-slate-500">
-            Verify authenticity of church milestone certificates via verification code or QR code.
-          </p>
-          <form onSubmit={handleVerify} className="space-y-3">
-            <div className="flex gap-2">
+          <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', background: 'rgba(0, 0, 0, 0.2)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+            ✓ Auto-embedded into generated PDF certificates
+          </div>
+        </div>
+      </div>
+
+      {/* Verification Tool & Templates Overview */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+        {/* Verification Widget */}
+        <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <ShieldCheck size={18} color="var(--gold-400)" />
+              <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Certificate Verification Tool
+              </h3>
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              Verify authenticity and security serials of church milestone certificates.
+            </p>
+
+            <form onSubmit={handleVerify} style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
               <input
                 type="text"
-                placeholder="e.g., ECCL-BAP-7788"
+                placeholder="e.g. ECCL-BAP-7788"
                 value={verifyCode}
                 onChange={(e) => setVerifyCode(e.target.value)}
-                className="flex-1 px-3 py-2 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white uppercase"
+                className="form-input"
+                style={{ fontSize: '12.5px', fontFamily: 'monospace', textTransform: 'uppercase' }}
               />
-              <button
-                type="submit"
-                disabled={verifyLoading}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold"
-              >
-                Verify
+              <button type="submit" disabled={verifyLoading} className="btn btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+                {verifyLoading ? 'Checking...' : 'Verify'}
               </button>
-            </div>
-          </form>
+            </form>
 
-          {verificationResult && (
-            <div
-              className={`p-3 rounded-xl border text-xs ${
-                verificationResult.valid
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-300'
-                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-300'
-              }`}
-            >
-              {verificationResult.valid ? (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 font-bold">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span>AUTHENTIC & VERIFIED</span>
+            {verificationResult && (
+              <div
+                style={{
+                  padding: '12px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '12px',
+                  background: verificationResult.valid ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  border: `1px solid ${verificationResult.valid ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                  color: verificationResult.valid ? '#34d399' : '#f87171',
+                }}
+              >
+                {verificationResult.valid ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                      <CheckCircle2 size={15} />
+                      <span>AUTHENTIC & VERIFIED</span>
+                    </div>
+                    <div>Recipient: <strong>{verificationResult.recipient}</strong></div>
+                    <div>Type: {verificationResult.type} • Event: {verificationResult.event_date}</div>
+                    <div>Officiant: {verificationResult.officiant}</div>
                   </div>
-                  <p>Recipient: {verificationResult.recipient}</p>
-                  <p>Type: {verificationResult.type}</p>
-                  <p>Event Date: {verificationResult.event_date}</p>
-                  <p>Officiant: {verificationResult.officiant}</p>
-                </div>
-              ) : (
-                <p>Invalid or unregistered verification code.</p>
-              )}
-            </div>
-          )}
+                ) : (
+                  <div>⚠️ Invalid or unregistered certificate code.</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Templates List */}
-        <div className="lg:col-span-2 bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-5 shadow-sm space-y-3">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center justify-between">
-            <span>Configured Certificate Templates ({templates.length})</span>
-            <span className="text-xs font-normal text-slate-500">Gold Ornate Borders & Scripture Text</span>
-          </h3>
+        <div className="card" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FileCheck size={16} color="var(--gold-400)" />
+              <span>Configured Templates ({templates.length})</span>
+            </h3>
+            <span style={{ fontSize: '11.5px', color: 'var(--gold-400)', fontWeight: 600 }}>
+              Gold Parchment Format
+            </span>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
             {templates.map((tmpl) => (
               <div
                 key={tmpl.id}
-                className="p-3 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-800/40 rounded-xl space-y-1"
+                style={{
+                  padding: '12px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--border-subtle)',
+                }}
               >
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-xs text-amber-900 dark:text-amber-200">{tmpl.title}</span>
-                  <span className="px-1.5 py-0.5 bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100 rounded text-[10px] font-semibold uppercase">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {tmpl.title}
+                  </span>
+                  <span className="status-pill badge-neutral" style={{ fontSize: '10px' }}>
                     {tmpl.type}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 italic line-clamp-2">
-                  "{tmpl.scripture_verse}"
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>
+                  "{tmpl.scripture_verse ? tmpl.scripture_verse.slice(0, 75) + '...' : 'Sacred Ordinance'}"
                 </p>
               </div>
             ))}
@@ -203,23 +288,38 @@ export const CertificatesView: React.FC = () => {
         </div>
       </div>
 
-      {/* Issued Certificates Table */}
-      <div className="bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm overflow-hidden space-y-4 p-5">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <h3 className="font-bold text-slate-900 dark:text-white text-base">
-            Issued Official Certificates ({issuedCerts.length})
-          </h3>
+      {/* Issued Certificates Table Section */}
+      <div className="card" style={{ padding: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+              Issued Official Certificates ({issuedCerts.length})
+            </h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              Historical register of issued sacramental certificates with PDF download and verification codes.
+            </p>
+          </div>
 
-          {/* Type Filter */}
-          <div className="flex items-center gap-2">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div className="search-box" style={{ width: '260px' }}>
+              <Search size={14} color="var(--text-muted)" />
+              <input
+                type="text"
+                placeholder="Search certificates..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="px-3 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+              className="form-select"
+              style={{ width: 'auto', padding: '6px 12px', fontSize: '12.5px' }}
             >
               <option value="">All Milestone Types</option>
               <option value="Baptism">Holy Baptism</option>
-              <option value="Wedding">Holy Matrimony / Wedding</option>
+              <option value="Wedding">Holy Matrimony</option>
               <option value="Child Dedication">Child Dedication</option>
               <option value="Confirmation">Holy Confirmation</option>
               <option value="Membership">Church Membership</option>
@@ -227,190 +327,280 @@ export const CertificatesView: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200/80 dark:border-slate-800/80">
+        <div className="table-container">
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="px-5 py-3.5">Cert #</th>
-                <th className="px-5 py-3.5">Type</th>
-                <th className="px-5 py-3.5">Recipient</th>
-                <th className="px-5 py-3.5">Event Date</th>
-                <th className="px-5 py-3.5">Officiant</th>
-                <th className="px-5 py-3.5">Verification Code</th>
-                <th className="px-5 py-3.5 text-right">PDF Download</th>
+                <th>Cert Serial #</th>
+                <th>Type</th>
+                <th>Recipient / Spouse</th>
+                <th>Event Date</th>
+                <th>Officiating Pastor</th>
+                <th>Verification Code</th>
+                <th style={{ textAlign: 'right' }}>PDF Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {issuedCerts.map((cert) => (
-                <tr key={cert.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                  <td className="px-5 py-3.5 font-mono text-xs font-bold text-amber-700 dark:text-amber-400">
-                    {cert.certificate_number}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                      {cert.certificate_type}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 font-medium text-slate-900 dark:text-white">
-                    {cert.recipient_name}
-                    {cert.secondary_name && <span className="text-slate-400 text-xs"> & {cert.secondary_name}</span>}
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300 text-xs">{cert.event_date}</td>
-                  <td className="px-5 py-3.5 text-slate-600 dark:text-slate-300 text-xs">{cert.officiant_name}</td>
-                  <td className="px-5 py-3.5 font-mono text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
-                    {cert.verification_code}
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    <a
-                      href={api.getCertificatePdfUrl(cert.id)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      Download PDF
-                    </a>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                    Loading certificate register...
                   </td>
                 </tr>
-              ))}
+              ) : filteredCerts.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                    No certificates found.
+                  </td>
+                </tr>
+              ) : (
+                filteredCerts.map((cert) => (
+                  <tr key={cert.id}>
+                    <td>
+                      <span className="cell-mono" style={{ color: 'var(--gold-400)', fontWeight: 700 }}>
+                        {cert.certificate_number}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="status-pill badge-amber">
+                        {cert.certificate_type}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {cert.recipient_name}
+                        {cert.secondary_name && (
+                          <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '12px' }}>
+                            {' '} & {cert.secondary_name}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>{cert.event_date}</span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '12.5px', color: 'var(--text-primary)' }}>{cert.officiant_name}</span>
+                    </td>
+                    <td>
+                      <span className="cell-mono" style={{ color: '#60a5fa', fontWeight: 600 }}>
+                        {cert.verification_code}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <a
+                        href={api.getCertificatePdfUrl(cert.id)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-secondary btn-sm"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Download size={13} />
+                        <span>Download PDF</span>
+                      </a>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal: Issue Certificate */}
+      {/* Modal: Issue Official Certificate */}
       {showIssueModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Award className="h-5 w-5 text-amber-600" />
-                Issue Life Milestone Certificate
-              </h3>
-              <button
-                onClick={() => setShowIssueModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                ✕
+        <div className="modal-overlay" onClick={() => setShowIssueModal(false)}>
+          <div className="modal-dialog modal-dialog-large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Award size={20} color="var(--gold-400)" />
+                  <span>Issue Life Milestone Certificate</span>
+                </h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  Generates an official verifiable certificate with church legal registration details and custom serial.
+                </p>
+              </div>
+              <button className="btn btn-icon btn-secondary" onClick={() => setShowIssueModal(false)}>
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleIssueCertificate} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Certificate Type *
-                </label>
-                <select
-                  required
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                >
-                  <option value="Baptism">Holy Baptism</option>
-                  <option value="Wedding">Holy Matrimony / Wedding</option>
-                  <option value="Child Dedication">Child Dedication</option>
-                  <option value="Confirmation">Holy Confirmation</option>
-                  <option value="Membership">Church Membership</option>
-                </select>
+            <form onSubmit={handleIssueCertificate}>
+              <div className="modal-content">
+                <div className="form-grid" style={{ marginBottom: '16px' }}>
+                  <div>
+                    <label className="form-label">Certificate Type *</label>
+                    <select
+                      required
+                      className="form-select"
+                      value={selectedType}
+                      onChange={(e) => setSelectedType(e.target.value)}
+                    >
+                      <option value="Baptism">Holy Baptism</option>
+                      <option value="Wedding">Holy Matrimony / Wedding</option>
+                      <option value="Child Dedication">Child Dedication</option>
+                      <option value="Confirmation">Holy Confirmation</option>
+                      <option value="Membership">Church Membership</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">Link Member (Optional)</label>
+                    <select
+                      className="form-select"
+                      value={memberId || ''}
+                      onChange={(e) => {
+                        const mId = e.target.value ? Number(e.target.value) : undefined;
+                        setMemberId(mId);
+                        if (mId) {
+                          const m = members.find((x) => x.id === mId);
+                          if (m) {
+                            setRecipientName(`${m.first_name} ${m.last_name}`);
+                          }
+                        }
+                      }}
+                    >
+                      <option value="">Select from Member Directory</option>
+                      {members.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.first_name} {m.last_name} ({m.status})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className={selectedType === 'Wedding' ? '' : 'form-group-full'}>
+                    <label className="form-label">Recipient Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      className="form-input"
+                      placeholder="e.g., Chloe Anderson"
+                      value={recipientName}
+                      onChange={(e) => setRecipientName(e.target.value)}
+                    />
+                  </div>
+
+                  {selectedType === 'Wedding' && (
+                    <div>
+                      <label className="form-label">Spouse Full Name *</label>
+                      <input
+                        type="text"
+                        required
+                        className="form-input"
+                        placeholder="e.g., Elena Morales"
+                        value={secondaryName}
+                        onChange={(e) => setSecondaryName(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="form-label">Sacrament / Event Date *</label>
+                    <input
+                      type="date"
+                      required
+                      className="form-input"
+                      value={eventDate}
+                      onChange={(e) => setEventDate(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Officiating Minister / Pastor *</label>
+                    <input
+                      type="text"
+                      required
+                      className="form-input"
+                      value={officiantName}
+                      onChange={(e) => setOfficiantName(e.target.value)}
+                      placeholder="e.g. Pastor Dr. Samuel Thomas"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Witness / Sponsor 1</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g., Elder David Sterling"
+                      value={witness1}
+                      onChange={(e) => setWitness1(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Witness / Sponsor 2</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g., Dr. Marcus Anderson"
+                      value={witness2}
+                      onChange={(e) => setWitness2(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '16px', padding: '14px', borderRadius: 'var(--radius-sm)', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--gold-400)', textTransform: 'uppercase', marginBottom: '10px' }}>
+                    Church Legal Registration On Certificate (Editable Override)
+                  </div>
+                  <div className="form-grid">
+                    <div>
+                      <label className="form-label">Church Name Header</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={churchName}
+                        onChange={(e) => setChurchName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Legal Reg / 80G / 501(c)(3) / Charity No</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder={churchRegNo}
+                        value={customRegNo || churchRegNo}
+                        onChange={(e) => {
+                          setCustomRegNo(e.target.value);
+                          setChurchRegNo(e.target.value);
+                        }}
+                      />
+                    </div>
+                    <div className="form-group-full">
+                      <label className="form-label">Church Physical Address</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder={churchAddress}
+                        value={customAddress || churchAddress}
+                        onChange={(e) => {
+                          setCustomAddress(e.target.value);
+                          setChurchAddress(e.target.value);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Recipient Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., Chloe Anderson"
-                  value={recipientName}
-                  onChange={(e) => setRecipientName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              {selectedType === 'Wedding' && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Spouse / Secondary Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g., Elena Morales"
-                    value={secondaryName}
-                    onChange={(e) => setSecondaryName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Sacrament / Event Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={eventDate}
-                    onChange={(e) => setEventDate(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Officiating Minister *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={officiantName}
-                    onChange={(e) => setOfficiantName(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Witness / Sponsor 1
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Elder David Sterling"
-                    value={witness1}
-                    onChange={(e) => setWitness1(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Witness / Sponsor 2
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Dr. Marcus Anderson"
-                    value={witness2}
-                    onChange={(e) => setWitness2(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setShowIssueModal(false)}
-                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-sm font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm"
+                  className="btn btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  Generate & Issue Certificate
+                  <Award size={16} />
+                  <span>Generate & Issue Certificate</span>
                 </button>
               </div>
             </form>

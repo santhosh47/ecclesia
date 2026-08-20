@@ -17,6 +17,7 @@ export interface Member {
   avatar_url?: string | null;
   status: string; // 'Active', 'Visitor', 'Regular Attendee', 'Inactive', 'Transferred', 'Clergy'
   member_type: string; // 'Adult', 'Youth', 'Child', 'Senior'
+  leadership_role?: string | null; // 'Elder' | 'Deacon' | 'Minister' | 'Preacher' | 'Pastor' | 'Evangelist'
   pan_number?: string | null;
   tax_id?: string | null;
   gift_aid_eligible?: boolean;
@@ -696,4 +697,37 @@ export interface CsvImportResult {
   skipped_count: number;
   errors: string[];
   sample_records: string[];
+}
+
+export interface CertificateTemplate {
+  id: number;
+  type: string;
+  title: string;
+  scripture_verse?: string | null;
+  header_text?: string | null;
+  body_template: string;
+  signatory_1_title: string;
+  signatory_2_title: string;
+  border_style: string;
+}
+
+export interface IssuedCertificate {
+  id: number;
+  certificate_number: string;
+  certificate_type: string;
+  member_id?: number | null;
+  recipient_name: string;
+  secondary_name?: string | null;
+  issue_date: string;
+  event_date: string;
+  officiant_name: string;
+  witness_1?: string | null;
+  witness_2?: string | null;
+  church_name: string;
+  church_registration_no?: string | null;
+  church_address?: string | null;
+  verification_code: string;
+  notes?: string | null;
+  pdf_file_url?: string | null;
+  created_at: string;
 }

@@ -14,6 +14,7 @@ import {
   Layers,
   Plus,
   Scale,
+  Search,
   Send,
   Sparkles,
   Users,
@@ -42,6 +43,10 @@ export const LedgerView: React.FC = () => {
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<string | null>(null);
+
+  // Filters and search
+  const [journalSearch, setJournalSearch] = useState('');
+  const [accountSearch, setAccountSearch] = useState('');
 
   // Smart Wizard Form State
   const [wizardForm, setWizardForm] = useState({
@@ -164,20 +169,17 @@ export const LedgerView: React.FC = () => {
         description: desc,
         reference: wizardForm.reference,
         entry_date: wizardForm.entry_date,
-        lines,
+        lines: lines,
       });
 
-      setNotification('Transaction recorded and posted to ledger successfully!');
+      setNotification('Double-entry transaction posted successfully!');
       setTimeout(() => setNotification(null), 3500);
       setWizardForm({
+        ...wizardForm,
         amount: '',
-        bank_account_id: wizardForm.bank_account_id,
-        category_account_id: wizardForm.category_account_id,
-        transfer_to_account_id: '',
         payer_or_payee: '',
         reference: '',
         description: '',
-        entry_date: new Date().toISOString().slice(0, 10),
       });
       fetchData();
     } catch (err: any) {
@@ -187,14 +189,20 @@ export const LedgerView: React.FC = () => {
 
   const handleAdvancedSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const formattedLines = advLines
-      .filter((l) => l.account_id && (parseFloat(l.debit) > 0 || parseFloat(l.credit) > 0))
-      .map((l) => ({
+    const formattedLines: { account_id: number; debit: number; credit: number; memo?: string }[] = [];
+
+    for (const l of advLines) {
+      if (!l.account_id) continue;
+      const d = parseFloat(l.debit) || 0;
+      const c = parseFloat(l.credit) || 0;
+      if (d === 0 && c === 0) continue;
+      formattedLines.push({
         account_id: parseInt(l.account_id),
-        debit: parseFloat(l.debit) || 0,
-        credit: parseFloat(l.credit) || 0,
+        debit: d,
+        credit: c,
         memo: l.memo || undefined,
-      }));
+      });
+    }
 
     if (formattedLines.length < 2) {
       alert('A journal entry must contain at least 2 lines.');
@@ -250,12 +258,35 @@ export const LedgerView: React.FC = () => {
     }
   };
 
+  const filteredEntries = entries.filter((e) => {
+    const q = journalSearch.toLowerCase();
+    return (
+      e.entry_number.toLowerCase().includes(q) ||
+      e.description.toLowerCase().includes(q) ||
+      (e.reference && e.reference.toLowerCase().includes(q)) ||
+      e.lines.some((l) => l.account_code?.toLowerCase().includes(q) || (l.memo && l.memo.toLowerCase().includes(q)))
+    );
+  });
+
+  const filteredAccounts = accounts.filter((a) => {
+    const q = accountSearch.toLowerCase();
+    return (
+      a.code.toLowerCase().includes(q) ||
+      a.name.toLowerCase().includes(q) ||
+      (a.sub_category && a.sub_category.toLowerCase().includes(q)) ||
+      a.account_type.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="view-container">
       {/* Header */}
-      <div className="view-header">
+      <div className="view-header" style={{ marginBottom: '24px' }}>
         <div>
-          <h1 className="view-title">Double-Entry Ledger & Financial Bookkeeping</h1>
+          <h1 className="view-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Scale size={28} color="var(--gold-400)" />
+            <span>Double-Entry Ledger & Financial Bookkeeping</span>
+          </h1>
           <p className="view-subtitle">
             User-friendly double-entry accounting wizard, chart of accounts tree, real-time trial balance verification, and staff payroll.
           </p>
@@ -263,159 +294,162 @@ export const LedgerView: React.FC = () => {
       </div>
 
       {notification && (
-        <div style={{ background: '#ecfdf5', border: '1px solid #10b981', color: '#065f46', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.4)', color: '#34d399', padding: '12px 16px', borderRadius: 'var(--radius-sm)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600 }}>
           <CheckCircle2 size={18} />
           <span>{notification}</span>
         </div>
       )}
 
       {/* Financial Health Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="card" style={{ borderLeft: '4px solid #3b82f6' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Total Bank & Cash Assets</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{formatCurrency(totalAssets)}</div>
-          <div style={{ fontSize: '0.75rem', color: '#3b82f6', marginTop: '0.25rem' }}>{assetAccounts.length} Active Accounts</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div className="card" style={{ borderLeft: '4px solid #3b82f6', padding: '18px 20px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Total Bank & Cash Assets</div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)' }}>{formatCurrency(totalAssets)}</div>
+          <div style={{ fontSize: '12px', color: '#60a5fa', marginTop: '4px', fontWeight: 600 }}>{assetAccounts.length} Active Bank/Cash Accounts</div>
         </div>
 
-        <div className="card" style={{ borderLeft: '4px solid #10b981' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>YTD Total Giving Revenue</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#059669' }}>{formatCurrency(totalRevenue)}</div>
-          <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '0.25rem' }}>Tithes, Offerings & Grants</div>
+        <div className="card" style={{ borderLeft: '4px solid #10b981', padding: '18px 20px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>YTD Total Giving Revenue</div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: '#34d399' }}>{formatCurrency(totalRevenue)}</div>
+          <div style={{ fontSize: '12px', color: '#34d399', marginTop: '4px', fontWeight: 600 }}>Tithes, Offerings & Grants</div>
         </div>
 
-        <div className="card" style={{ borderLeft: '4px solid #f43f5e' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>YTD Operating Expenses</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#e11d48' }}>{formatCurrency(totalExpenses)}</div>
-          <div style={{ fontSize: '0.75rem', color: '#e11d48', marginTop: '0.25rem' }}>Salaries, Utilities, Missions</div>
+        <div className="card" style={{ borderLeft: '4px solid #f43f5e', padding: '18px 20px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>YTD Operating Expenses</div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: '#fb7185' }}>{formatCurrency(totalExpenses)}</div>
+          <div style={{ fontSize: '12px', color: '#fb7185', marginTop: '4px', fontWeight: 600 }}>Salaries, Utilities, Missions</div>
         </div>
 
-        <div className="card" style={{ borderLeft: '4px solid #8b5cf6' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Church Reserve Equity</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#7c3aed' }}>{formatCurrency(totalEquity)}</div>
-          <div style={{ fontSize: '0.75rem', color: '#7c3aed', marginTop: '0.25rem' }}>Building & General Reserves</div>
+        <div className="card" style={{ borderLeft: '4px solid #8b5cf6', padding: '18px 20px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Church Reserve Equity</div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: '#c084fc' }}>{formatCurrency(totalEquity)}</div>
+          <div style={{ fontSize: '12px', color: '#c084fc', marginTop: '4px', fontWeight: 600 }}>Building & General Reserves</div>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '2px solid #e2e8f0', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '24px', flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('wizard')}
+          className="btn"
           style={{
-            padding: '0.75rem 1.25rem',
-            border: 'none',
-            background: 'none',
+            background: activeTab === 'wizard' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'wizard' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'wizard' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
             fontWeight: 600,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            borderBottom: activeTab === 'wizard' ? '3px solid #6366f1' : '3px solid transparent',
-            color: activeTab === 'wizard' ? '#6366f1' : '#64748b',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '8px',
           }}
         >
-          <Sparkles size={18} />
+          <Sparkles size={16} />
           <span>Smart Transaction Wizard</span>
         </button>
+
         <button
           onClick={() => setActiveTab('entries')}
+          className="btn"
           style={{
-            padding: '0.75rem 1.25rem',
-            border: 'none',
-            background: 'none',
+            background: activeTab === 'entries' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'entries' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'entries' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
             fontWeight: 600,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            borderBottom: activeTab === 'entries' ? '3px solid #6366f1' : '3px solid transparent',
-            color: activeTab === 'entries' ? '#6366f1' : '#64748b',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '8px',
           }}
         >
-          <BookOpen size={18} />
+          <BookOpen size={16} />
           <span>Journal Entries Log ({entries.length})</span>
         </button>
+
         <button
           onClick={() => setActiveTab('accounts')}
+          className="btn"
           style={{
-            padding: '0.75rem 1.25rem',
-            border: 'none',
-            background: 'none',
+            background: activeTab === 'accounts' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'accounts' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'accounts' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
             fontWeight: 600,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            borderBottom: activeTab === 'accounts' ? '3px solid #6366f1' : '3px solid transparent',
-            color: activeTab === 'accounts' ? '#6366f1' : '#64748b',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '8px',
           }}
         >
-          <Layers size={18} />
+          <Layers size={16} />
           <span>Chart of Accounts ({accounts.length})</span>
         </button>
+
         <button
           onClick={() => setActiveTab('trial_balance')}
+          className="btn"
           style={{
-            padding: '0.75rem 1.25rem',
-            border: 'none',
-            background: 'none',
+            background: activeTab === 'trial_balance' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'trial_balance' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'trial_balance' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
             fontWeight: 600,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            borderBottom: activeTab === 'trial_balance' ? '3px solid #6366f1' : '3px solid transparent',
-            color: activeTab === 'trial_balance' ? '#6366f1' : '#64748b',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '8px',
           }}
         >
-          <Scale size={18} />
-          <span>Trial Balance Report</span>
+          <Scale size={16} />
+          <span>Trial Balance Sheet</span>
         </button>
+
         <button
           onClick={() => setActiveTab('payroll')}
+          className="btn"
           style={{
-            padding: '0.75rem 1.25rem',
-            border: 'none',
-            background: 'none',
+            background: activeTab === 'payroll' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'payroll' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'payroll' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
             fontWeight: 600,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            borderBottom: activeTab === 'payroll' ? '3px solid #6366f1' : '3px solid transparent',
-            color: activeTab === 'payroll' ? '#6366f1' : '#64748b',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '8px',
           }}
         >
-          <Users size={18} />
+          <Users size={16} />
           <span>Staff Payroll Ledger</span>
         </button>
       </div>
 
       {/* Tab 1: Smart Transaction Wizard */}
       {activeTab === 'wizard' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-          <div className="card" style={{ gridColumn: '1 / -1' }}>
-            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => setWizardMode('income')}
+                className="btn"
                 style={{
-                  padding: '0.6rem 1.25rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                  background: wizardMode === 'income' ? '#ecfdf5' : '#f1f5f9',
-                  color: wizardMode === 'income' ? '#047857' : '#475569',
-                  borderBottom: wizardMode === 'income' ? '2px solid #059669' : 'none',
+                  padding: '10px 18px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  background: wizardMode === 'income' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                  color: wizardMode === 'income' ? '#34d399' : 'var(--text-secondary)',
+                  border: wizardMode === 'income' ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid var(--border-subtle)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
+                  gap: '8px',
                 }}
               >
                 <ArrowDownLeft size={16} />
@@ -425,19 +459,18 @@ export const LedgerView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setWizardMode('expense')}
+                className="btn"
                 style={{
-                  padding: '0.6rem 1.25rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                  background: wizardMode === 'expense' ? '#fff1f2' : '#f1f5f9',
-                  color: wizardMode === 'expense' ? '#be123c' : '#475569',
-                  borderBottom: wizardMode === 'expense' ? '2px solid #e11d48' : 'none',
+                  padding: '10px 18px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  background: wizardMode === 'expense' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                  color: wizardMode === 'expense' ? '#fb7185' : 'var(--text-secondary)',
+                  border: wizardMode === 'expense' ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-subtle)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
+                  gap: '8px',
                 }}
               >
                 <ArrowUpRight size={16} />
@@ -447,19 +480,18 @@ export const LedgerView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setWizardMode('transfer')}
+                className="btn"
                 style={{
-                  padding: '0.6rem 1.25rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                  background: wizardMode === 'transfer' ? '#eff6ff' : '#f1f5f9',
-                  color: wizardMode === 'transfer' ? '#1d4ed8' : '#475569',
-                  borderBottom: wizardMode === 'transfer' ? '2px solid #2563eb' : 'none',
+                  padding: '10px 18px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  background: wizardMode === 'transfer' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                  color: wizardMode === 'transfer' ? '#60a5fa' : 'var(--text-secondary)',
+                  border: wizardMode === 'transfer' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid var(--border-subtle)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
+                  gap: '8px',
                 }}
               >
                 <ArrowRightLeft size={16} />
@@ -469,32 +501,31 @@ export const LedgerView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setWizardMode('advanced')}
+                className="btn"
                 style={{
-                  padding: '0.6rem 1.25rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.9rem',
-                  cursor: 'pointer',
-                  background: wizardMode === 'advanced' ? '#f5f3ff' : '#f1f5f9',
-                  color: wizardMode === 'advanced' ? '#6d28d9' : '#475569',
-                  borderBottom: wizardMode === 'advanced' ? '2px solid #7c3aed' : 'none',
+                  padding: '10px 18px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  background: wizardMode === 'advanced' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                  color: wizardMode === 'advanced' ? '#c084fc' : 'var(--text-secondary)',
+                  border: wizardMode === 'advanced' ? '1px solid rgba(139, 92, 246, 0.5)' : '1px solid var(--border-subtle)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
+                  gap: '8px',
                 }}
               >
                 <Scale size={16} />
-                <span>Advanced Journal Entry</span>
+                <span>Advanced Multi-Leg Journal</span>
               </button>
             </div>
 
             {/* Smart Wizard Form */}
             {wizardMode !== 'advanced' ? (
               <form onSubmit={handleWizardSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div className="form-grid" style={{ marginBottom: '20px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
+                    <label className="form-label">
                       Amount ({currencySymbol}) *
                     </label>
                     <input
@@ -503,20 +534,21 @@ export const LedgerView: React.FC = () => {
                       required
                       value={wizardForm.amount}
                       onChange={(e) => setWizardForm({ ...wizardForm, amount: e.target.value })}
-                      style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1.1rem', fontWeight: 700 }}
+                      className="form-input"
+                      style={{ fontSize: '16px', fontWeight: 700 }}
                       placeholder="0.00"
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
+                    <label className="form-label">
                       {wizardMode === 'income' ? 'Deposit Into Bank / Cash Account *' : 'Pay From Bank / Cash Account *'}
                     </label>
                     <select
                       required
                       value={wizardForm.bank_account_id}
                       onChange={(e) => setWizardForm({ ...wizardForm, bank_account_id: e.target.value })}
-                      style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      className="form-select"
                     >
                       <option value="">Select Asset Account...</option>
                       {assetAccounts.map((a) => (
@@ -529,14 +561,14 @@ export const LedgerView: React.FC = () => {
 
                   {wizardMode !== 'transfer' ? (
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
+                      <label className="form-label">
                         {wizardMode === 'income' ? 'Income / Giving Category *' : 'Expense Category *'}
                       </label>
                       <select
                         required
                         value={wizardForm.category_account_id}
                         onChange={(e) => setWizardForm({ ...wizardForm, category_account_id: e.target.value })}
-                        style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                        className="form-select"
                       >
                         <option value="">Select Category...</option>
                         {(wizardMode === 'income' ? revenueAccounts : expenseAccounts).map((a) => (
@@ -548,14 +580,14 @@ export const LedgerView: React.FC = () => {
                     </div>
                   ) : (
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
+                      <label className="form-label">
                         Transfer To Account *
                       </label>
                       <select
                         required
                         value={wizardForm.transfer_to_account_id}
                         onChange={(e) => setWizardForm({ ...wizardForm, transfer_to_account_id: e.target.value })}
-                        style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                        className="form-select"
                       >
                         <option value="">Select Destination Account...</option>
                         {assetAccounts.map((a) => (
@@ -568,33 +600,33 @@ export const LedgerView: React.FC = () => {
                   )}
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
+                    <label className="form-label">
                       {wizardMode === 'income' ? 'Received From (Donor / Member)' : 'Paid To (Vendor / Staff / Utility)'}
                     </label>
                     <input
                       type="text"
                       value={wizardForm.payer_or_payee}
                       onChange={(e) => setWizardForm({ ...wizardForm, payer_or_payee: e.target.value })}
-                      style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      className="form-input"
                       placeholder={wizardMode === 'income' ? 'e.g. Sunday Morning Collection' : 'e.g. Electricity Board / Audio Supplier'}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
-                      Reference / Cheque / UPI No.
+                    <label className="form-label">
+                      Reference / Cheque / UPI / Voucher No.
                     </label>
                     <input
                       type="text"
                       value={wizardForm.reference}
                       onChange={(e) => setWizardForm({ ...wizardForm, reference: e.target.value })}
-                      style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      className="form-input"
                       placeholder="e.g. UPI-6288190 or CHQ-00124"
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>
+                    <label className="form-label">
                       Transaction Date *
                     </label>
                     <input
@@ -602,21 +634,21 @@ export const LedgerView: React.FC = () => {
                       required
                       value={wizardForm.entry_date}
                       onChange={(e) => setWizardForm({ ...wizardForm, entry_date: e.target.value })}
-                      style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      className="form-input"
                     />
                   </div>
                 </div>
 
-                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
-                  <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '0.25rem' }}>Double-Entry Auto-Balancing Preview:</div>
+                <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '14px 18px', borderRadius: 'var(--radius-sm)', marginBottom: '20px', border: '1px solid var(--border-subtle)', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--gold-400)', marginBottom: '4px' }}>Automatic Double-Entry Balancing Preview:</div>
                   {wizardMode === 'income' && <div>• Debit (+): Bank/Cash Asset Account | • Credit (+): Revenue Giving Account</div>}
                   {wizardMode === 'expense' && <div>• Debit (+): Expense Category Account | • Credit (-): Bank/Cash Asset Account</div>}
                   {wizardMode === 'transfer' && <div>• Debit (+): Destination Asset Account | • Credit (-): Source Asset Account</div>}
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.75rem' }}>
-                    <Plus size={18} />
+                  <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Plus size={16} />
                     <span>Post Transaction to Ledger</span>
                   </button>
                 </div>
@@ -624,121 +656,127 @@ export const LedgerView: React.FC = () => {
             ) : (
               /* Advanced Mode */
               <form onSubmit={handleAdvancedSubmit}>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>Description *</label>
+                <div className="form-grid" style={{ marginBottom: '16px' }}>
+                  <div className="form-group-full">
+                    <label className="form-label">Description *</label>
                     <input
                       type="text"
                       required
                       value={advDescription}
                       onChange={(e) => setAdvDescription(e.target.value)}
-                      style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      className="form-input"
                       placeholder="e.g. Month-End Compound Adjustment Entry"
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem', color: '#334155' }}>Reference No.</label>
+                    <label className="form-label">Reference No.</label>
                     <input
                       type="text"
                       value={advReference}
                       onChange={(e) => setAdvReference(e.target.value)}
-                      style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      className="form-input"
                       placeholder="e.g. ADJ-2026-08"
                     />
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '1rem' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', fontSize: '0.85rem', color: '#64748b' }}>
-                        <th style={{ padding: '0.5rem' }}>Account</th>
-                        <th style={{ padding: '0.5rem', width: '140px' }}>Debit ({currencySymbol})</th>
-                        <th style={{ padding: '0.5rem', width: '140px' }}>Credit ({currencySymbol})</th>
-                        <th style={{ padding: '0.5rem' }}>Memo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {advLines.map((line, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.4rem' }}>
-                            <select
-                              value={line.account_id}
-                              onChange={(e) => {
-                                const newLines = [...advLines];
-                                newLines[idx].account_id = e.target.value;
-                                setAdvLines(newLines);
-                              }}
-                              style={{ width: '100%', padding: '0.45rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                            >
-                              <option value="">Select Account...</option>
-                              {accounts.map((a) => (
-                                <option key={a.id} value={a.id}>
-                                  {a.code} - {a.name} ({a.account_type})
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td style={{ padding: '0.4rem' }}>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={line.debit}
-                              onChange={(e) => {
-                                const newLines = [...advLines];
-                                newLines[idx].debit = e.target.value;
-                                if (e.target.value) newLines[idx].credit = '';
-                                setAdvLines(newLines);
-                              }}
-                              style={{ width: '100%', padding: '0.45rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                              placeholder="0.00"
-                            />
-                          </td>
-                          <td style={{ padding: '0.4rem' }}>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={line.credit}
-                              onChange={(e) => {
-                                const newLines = [...advLines];
-                                newLines[idx].credit = e.target.value;
-                                if (e.target.value) newLines[idx].debit = '';
-                                setAdvLines(newLines);
-                              }}
-                              style={{ width: '100%', padding: '0.45rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                              placeholder="0.00"
-                            />
-                          </td>
-                          <td style={{ padding: '0.4rem' }}>
-                            <input
-                              type="text"
-                              value={line.memo}
-                              onChange={(e) => {
-                                const newLines = [...advLines];
-                                newLines[idx].memo = e.target.value;
-                                setAdvLines(newLines);
-                              }}
-                              style={{ width: '100%', padding: '0.45rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                              placeholder="Optional line memo"
-                            />
-                          </td>
+                <div style={{ marginBottom: '20px' }}>
+                  <div className="table-container">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Account</th>
+                          <th style={{ width: '160px' }}>Debit ({currencySymbol})</th>
+                          <th style={{ width: '160px' }}>Credit ({currencySymbol})</th>
+                          <th>Memo</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {advLines.map((line, idx) => (
+                          <tr key={idx}>
+                            <td>
+                              <select
+                                value={line.account_id}
+                                onChange={(e) => {
+                                  const newLines = [...advLines];
+                                  newLines[idx].account_id = e.target.value;
+                                  setAdvLines(newLines);
+                                }}
+                                className="form-select"
+                                style={{ padding: '6px 10px', fontSize: '12.5px' }}
+                              >
+                                <option value="">Select Account...</option>
+                                {accounts.map((a) => (
+                                  <option key={a.id} value={a.id}>
+                                    {a.code} - {a.name} ({a.account_type})
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={line.debit}
+                                onChange={(e) => {
+                                  const newLines = [...advLines];
+                                  newLines[idx].debit = e.target.value;
+                                  if (e.target.value) newLines[idx].credit = '';
+                                  setAdvLines(newLines);
+                                }}
+                                className="form-input"
+                                style={{ padding: '6px 10px', fontSize: '12.5px' }}
+                                placeholder="0.00"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={line.credit}
+                                onChange={(e) => {
+                                  const newLines = [...advLines];
+                                  newLines[idx].credit = e.target.value;
+                                  if (e.target.value) newLines[idx].debit = '';
+                                  setAdvLines(newLines);
+                                }}
+                                className="form-input"
+                                style={{ padding: '6px 10px', fontSize: '12.5px' }}
+                                placeholder="0.00"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                value={line.memo}
+                                onChange={(e) => {
+                                  const newLines = [...advLines];
+                                  newLines[idx].memo = e.target.value;
+                                  setAdvLines(newLines);
+                                }}
+                                className="form-input"
+                                style={{ padding: '6px 10px', fontSize: '12.5px' }}
+                                placeholder="Optional line memo"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
                   <button
                     type="button"
                     onClick={() => setAdvLines([...advLines, { account_id: '', debit: '', credit: '', memo: '' }])}
                     className="btn btn-secondary"
-                    style={{ marginTop: '0.75rem', fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+                    style={{ marginTop: '12px', fontSize: '12px', padding: '6px 14px' }}
                   >
                     + Add Line Leg
                   </button>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.75rem' }}>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px' }}>
                     Post Balanced Entry
                   </button>
                 </div>
@@ -750,44 +788,92 @@ export const LedgerView: React.FC = () => {
 
       {/* Tab 2: Journal Entries Log */}
       {activeTab === 'entries' && (
-        <div className="card">
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b' }}>
-            Posted Journal Entries
-          </h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+        <div className="card" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Posted General Journal Entries ({entries.length})
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Complete immutable double-entry journal ledger entries with debit/credit breakdown.
+              </p>
+            </div>
+
+            <div className="search-box" style={{ width: '260px' }}>
+              <Search size={14} color="var(--text-muted)" />
+              <input
+                type="text"
+                placeholder="Search entries or accounts..."
+                value={journalSearch}
+                onChange={(e) => setJournalSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="table-container">
+            <table className="data-table">
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#64748b' }}>
-                  <th style={{ padding: '0.6rem' }}>Entry #</th>
-                  <th style={{ padding: '0.6rem' }}>Date</th>
-                  <th style={{ padding: '0.6rem' }}>Description</th>
-                  <th style={{ padding: '0.6rem' }}>Reference</th>
-                  <th style={{ padding: '0.6rem', textAlign: 'right' }}>Total Debit</th>
-                  <th style={{ padding: '0.6rem', textAlign: 'right' }}>Total Credit</th>
-                  <th style={{ padding: '0.6rem', textAlign: 'center' }}>Status</th>
+                <tr>
+                  <th>Entry #</th>
+                  <th>Date</th>
+                  <th style={{ minWidth: '280px' }}>Description & Legs</th>
+                  <th>Reference</th>
+                  <th style={{ textAlign: 'right' }}>Total Debit</th>
+                  <th style={{ textAlign: 'right' }}>Total Credit</th>
+                  <th style={{ textAlign: 'center' }}>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {entries.map((entry) => (
-                  <tr key={entry.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '0.6rem', fontWeight: 600, color: '#6366f1' }}>{entry.entry_number}</td>
-                    <td style={{ padding: '0.6rem' }}>{entry.entry_date}</td>
-                    <td style={{ padding: '0.6rem' }}>
-                      <div style={{ fontWeight: 600, color: '#1e293b' }}>{entry.description}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        {entry.lines.map((l) => `${l.account_code} (${l.debit > 0 ? `Dr ${formatCurrency(l.debit)}` : `Cr ${formatCurrency(l.credit)}`})`).join(' | ')}
-                      </div>
-                    </td>
-                    <td style={{ padding: '0.6rem', color: '#64748b' }}>{entry.reference || '—'}</td>
-                    <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(entry.total_debit)}</td>
-                    <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(entry.total_credit)}</td>
-                    <td style={{ padding: '0.6rem', textAlign: 'center' }}>
-                      <span style={{ fontSize: '0.75rem', background: '#ecfdf5', color: '#059669', padding: '0.2rem 0.5rem', borderRadius: '12px', fontWeight: 600 }}>
-                        {entry.status}
-                      </span>
+                {filteredEntries.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                      No journal entries found.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredEntries.map((entry) => (
+                    <tr key={entry.id}>
+                      <td>
+                        <span className="cell-mono" style={{ color: 'var(--gold-400)', fontWeight: 700 }}>
+                          {entry.entry_number}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>{entry.entry_date}</span>
+                      </td>
+                      <td style={{ maxWidth: '380px' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px', wordBreak: 'break-word' }}>
+                          {entry.description}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+                          {entry.lines.map((l) => (
+                            <span
+                              key={l.id}
+                              className={`line-badge ${l.debit > 0 ? 'dr' : 'cr'}`}
+                              title={l.memo || undefined}
+                            >
+                              {l.account_code} {l.debit > 0 ? `Dr ${formatCurrency(l.debit)}` : `Cr ${formatCurrency(l.credit)}`}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{entry.reference || '—'}</span>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {formatCurrency(entry.total_debit)}
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {formatCurrency(entry.total_credit)}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className="status-pill badge-emerald">
+                          {entry.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -796,65 +882,84 @@ export const LedgerView: React.FC = () => {
 
       {/* Tab 3: Chart of Accounts */}
       {activeTab === 'accounts' && (
-        <div className="card">
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b' }}>
-            Chart of Accounts Explorer
-          </h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+        <div className="card" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Chart of Accounts Explorer ({accounts.length})
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Standardized church chart of accounts covering Assets, Liabilities, Equity, Revenue, and Expenses.
+              </p>
+            </div>
+
+            <div className="search-box" style={{ width: '260px' }}>
+              <Search size={14} color="var(--text-muted)" />
+              <input
+                type="text"
+                placeholder="Search account code or name..."
+                value={accountSearch}
+                onChange={(e) => setAccountSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="table-container">
+            <table className="data-table">
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#64748b' }}>
-                  <th style={{ padding: '0.6rem' }}>Code</th>
-                  <th style={{ padding: '0.6rem' }}>Account Name</th>
-                  <th style={{ padding: '0.6rem' }}>Type</th>
-                  <th style={{ padding: '0.6rem' }}>Category</th>
-                  <th style={{ padding: '0.6rem', textAlign: 'right' }}>Current Balance</th>
+                <tr>
+                  <th>Code</th>
+                  <th>Account Name & Purpose</th>
+                  <th>Type</th>
+                  <th>Category</th>
+                  <th style={{ textAlign: 'right' }}>Current Balance</th>
                 </tr>
               </thead>
               <tbody>
-                {accounts.map((acc) => (
-                  <tr key={acc.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '0.6rem', fontWeight: 700, color: '#334155' }}>{acc.code}</td>
-                    <td style={{ padding: '0.6rem' }}>
-                      <div style={{ fontWeight: 600, color: '#1e293b' }}>{acc.name}</div>
-                      {acc.description && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{acc.description}</div>}
+                {filteredAccounts.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                      No accounts matched your search.
                     </td>
-                    <td style={{ padding: '0.6rem' }}>
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          padding: '0.2rem 0.5rem',
-                          borderRadius: '4px',
-                          fontWeight: 600,
-                          background:
-                            acc.account_type === 'Asset'
-                              ? '#dbeafe'
-                              : acc.account_type === 'Revenue'
-                              ? '#dcfce7'
-                              : acc.account_type === 'Expense'
-                              ? '#ffe4e6'
-                              : acc.account_type === 'Liability'
-                              ? '#fef3c7'
-                              : '#f3e8ff',
-                          color:
-                            acc.account_type === 'Asset'
-                              ? '#1e40af'
-                              : acc.account_type === 'Revenue'
-                              ? '#15803d'
-                              : acc.account_type === 'Expense'
-                              ? '#be123c'
-                              : acc.account_type === 'Liability'
-                              ? '#b45309'
-                              : '#7e22ce',
-                        }}
-                      >
-                        {acc.account_type}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.6rem', color: '#64748b' }}>{acc.sub_category || '—'}</td>
-                    <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: 700 }}>{formatCurrency(acc.balance)}</td>
                   </tr>
-                ))}
+                ) : (
+                  filteredAccounts.map((acc) => (
+                    <tr key={acc.id}>
+                      <td>
+                        <span className="cell-mono" style={{ fontWeight: 700, color: 'var(--gold-400)' }}>
+                          {acc.code}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{acc.name}</div>
+                        {acc.description && <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>{acc.description}</div>}
+                      </td>
+                      <td>
+                        <span
+                          className={`status-pill ${
+                            acc.account_type === 'Asset'
+                              ? 'badge-blue'
+                              : acc.account_type === 'Revenue'
+                              ? 'badge-emerald'
+                              : acc.account_type === 'Expense'
+                              ? 'badge-rose'
+                              : acc.account_type === 'Liability'
+                              ? 'badge-amber'
+                              : 'badge-purple'
+                          }`}
+                        >
+                          {acc.account_type}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{acc.sub_category || '—'}</span>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text-primary)' }}>
+                        {formatCurrency(acc.balance)}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -863,50 +968,68 @@ export const LedgerView: React.FC = () => {
 
       {/* Tab 4: Trial Balance Report */}
       {activeTab === 'trial_balance' && trialBalance && (
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <div className="card" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1e293b' }}>Trial Balance Sheet</h3>
-              <p style={{ fontSize: '0.85rem', color: '#64748b' }}>As of {trialBalance.as_of_date}</p>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>Trial Balance Sheet</h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>As of {trialBalance.as_of_date}</p>
             </div>
             {trialBalance.is_balanced ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ecfdf5', color: '#065f46', padding: '0.4rem 0.85rem', borderRadius: '20px', fontWeight: 700, fontSize: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '6px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '12.5px', border: '1px solid rgba(16, 185, 129, 0.4)' }}>
                 <CheckCircle2 size={16} />
                 <span>DEBITS = CREDITS (STRICTLY BALANCED)</span>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fef2f2', color: '#991b1b', padding: '0.4rem 0.85rem', borderRadius: '20px', fontWeight: 700, fontSize: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(239, 68, 68, 0.15)', color: '#fb7185', padding: '6px 14px', borderRadius: '20px', fontWeight: 700, fontSize: '12.5px', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
                 <AlertCircle size={16} />
                 <span>OUT OF BALANCE</span>
               </div>
             )}
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <div className="table-container">
+            <table className="data-table">
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#64748b' }}>
-                  <th style={{ padding: '0.6rem' }}>Code</th>
-                  <th style={{ padding: '0.6rem' }}>Account Description</th>
-                  <th style={{ padding: '0.6rem' }}>Type</th>
-                  <th style={{ padding: '0.6rem', textAlign: 'right' }}>Debit ({currencySymbol})</th>
-                  <th style={{ padding: '0.6rem', textAlign: 'right' }}>Credit ({currencySymbol})</th>
+                <tr>
+                  <th>Code</th>
+                  <th>Account Description</th>
+                  <th>Type</th>
+                  <th style={{ textAlign: 'right' }}>Debit ({currencySymbol})</th>
+                  <th style={{ textAlign: 'right' }}>Credit ({currencySymbol})</th>
                 </tr>
               </thead>
               <tbody>
                 {trialBalance.items.map((it) => (
-                  <tr key={it.account_id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '0.6rem', fontWeight: 600 }}>{it.code}</td>
-                    <td style={{ padding: '0.6rem' }}>{it.name}</td>
-                    <td style={{ padding: '0.6rem', color: '#64748b' }}>{it.account_type}</td>
-                    <td style={{ padding: '0.6rem', textAlign: 'right' }}>{it.debit > 0 ? formatCurrency(it.debit) : '—'}</td>
-                    <td style={{ padding: '0.6rem', textAlign: 'right' }}>{it.credit > 0 ? formatCurrency(it.credit) : '—'}</td>
+                  <tr key={it.account_id}>
+                    <td>
+                      <span className="cell-mono" style={{ fontWeight: 700, color: 'var(--gold-400)' }}>
+                        {it.code}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{it.name}</span>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{it.account_type}</span>
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: it.debit > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                      {it.debit > 0 ? formatCurrency(it.debit) : '—'}
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: it.credit > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                      {it.credit > 0 ? formatCurrency(it.credit) : '—'}
+                    </td>
                   </tr>
                 ))}
-                <tr style={{ background: '#f8fafc', fontWeight: 700, borderTop: '2px solid #cbd5e1' }}>
-                  <td colSpan={3} style={{ padding: '0.75rem', textAlign: 'right' }}>TOTALS:</td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right', color: '#1e293b' }}>{formatCurrency(trialBalance.total_debits)}</td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right', color: '#1e293b' }}>{formatCurrency(trialBalance.total_credits)}</td>
+                <tr style={{ background: 'rgba(245, 158, 11, 0.08)', fontWeight: 800, borderTop: '2px solid var(--border-subtle)' }}>
+                  <td colSpan={3} style={{ textAlign: 'right', color: 'var(--gold-400)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    TOTAL BALANCED SUMS:
+                  </td>
+                  <td style={{ textAlign: 'right', color: 'var(--text-primary)', fontSize: '14px' }}>
+                    {formatCurrency(trialBalance.total_debits)}
+                  </td>
+                  <td style={{ textAlign: 'right', color: 'var(--text-primary)', fontSize: '14px' }}>
+                    {formatCurrency(trialBalance.total_credits)}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -916,25 +1039,25 @@ export const LedgerView: React.FC = () => {
 
       {/* Tab 5: Staff Payroll */}
       {activeTab === 'payroll' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="card">
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b' }}>
-              Church Clergy & Staff Roster
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="card" style={{ padding: '20px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px' }}>
+              Church Clergy & Staff Roster ({staffList.length})
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
               {staffList.map((stf) => (
-                <div key={stf.id} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div key={stf.id} style={{ border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '16px', background: 'rgba(255, 255, 255, 0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
-                    <h4 style={{ fontWeight: 700, color: '#1e293b' }}>{stf.first_name} {stf.last_name}</h4>
-                    <div style={{ fontSize: '0.85rem', color: '#6366f1', fontWeight: 600, marginBottom: '0.5rem' }}>{stf.role_title}</div>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Base Monthly: {formatCurrency(stf.base_salary_monthly)}</div>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Allowances: {formatCurrency(stf.housing_allowance + stf.travel_allowance)}</div>
+                    <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px' }}>{stf.first_name} {stf.last_name}</h4>
+                    <div style={{ fontSize: '12px', color: 'var(--gold-400)', fontWeight: 600, marginBottom: '8px' }}>{stf.role_title}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Base Monthly: <strong>{formatCurrency(stf.base_salary_monthly)}</strong></div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>Allowances: <strong>{formatCurrency(stf.housing_allowance + stf.travel_allowance)}</strong></div>
                   </div>
                   {hasPermission('manage_ledger') && (
                     <button
                       onClick={() => handleDisbursePayroll(stf.id)}
-                      className="btn btn-primary"
-                      style={{ marginTop: '0.75rem', fontSize: '0.8rem', padding: '0.4rem', width: '100%' }}
+                      className="btn btn-primary btn-sm"
+                      style={{ marginTop: '14px', width: '100%' }}
                     >
                       Disburse Monthly Salary
                     </button>
@@ -944,37 +1067,45 @@ export const LedgerView: React.FC = () => {
             </div>
           </div>
 
-          <div className="card">
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem', color: '#1e293b' }}>
-              Disbursed Payroll History
+          <div className="card" style={{ padding: '20px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '14px' }}>
+              Disbursed Payroll History ({payrollRecords.length})
             </h3>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+            <div className="table-container">
+              <table className="data-table">
                 <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#64748b' }}>
-                    <th style={{ padding: '0.6rem' }}>Staff Name</th>
-                    <th style={{ padding: '0.6rem' }}>Pay Period</th>
-                    <th style={{ padding: '0.6rem' }}>Disbursed Date</th>
-                    <th style={{ padding: '0.6rem', textAlign: 'right' }}>Net Disbursed</th>
-                    <th style={{ padding: '0.6rem' }}>Payslip Ref</th>
-                    <th style={{ padding: '0.6rem', textAlign: 'center' }}>Status</th>
+                  <tr>
+                    <th>Staff Name</th>
+                    <th>Pay Period</th>
+                    <th>Disbursed Date</th>
+                    <th style={{ textAlign: 'right' }}>Net Disbursed</th>
+                    <th>Payslip Ref</th>
+                    <th style={{ textAlign: 'center' }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {payrollRecords.map((pr) => (
-                    <tr key={pr.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '0.6rem', fontWeight: 600 }}>{pr.staff_name || `Staff #${pr.staff_id}`}</td>
-                      <td style={{ padding: '0.6rem' }}>{pr.pay_period}</td>
-                      <td style={{ padding: '0.6rem' }}>{pr.payment_date}</td>
-                      <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: 700, color: '#059669' }}>{formatCurrency(pr.net_pay)}</td>
-                      <td style={{ padding: '0.6rem', color: '#64748b' }}>{pr.payslip_reference || '—'}</td>
-                      <td style={{ padding: '0.6rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', background: '#ecfdf5', color: '#059669', padding: '0.2rem 0.5rem', borderRadius: '12px', fontWeight: 600 }}>
-                          {pr.status}
-                        </span>
+                  {payrollRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                        No payroll disbursements recorded yet.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    payrollRecords.map((pr) => (
+                      <tr key={pr.id}>
+                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pr.staff_name || `Staff #${pr.staff_id}`}</td>
+                        <td><span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>{pr.pay_period}</span></td>
+                        <td><span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>{pr.payment_date}</span></td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#34d399' }}>{formatCurrency(pr.net_pay)}</td>
+                        <td><span className="cell-mono" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{pr.payslip_reference || '—'}</span></td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className="status-pill badge-emerald">
+                            {pr.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

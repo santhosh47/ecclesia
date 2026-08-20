@@ -9,13 +9,14 @@ import {
   Plus,
   Scale,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useLocalization } from '../context/LocalizationContext';
 import { FCRALog, Form10BDExportReport, TaxReceipt, UKGiftAidClaimReport } from '../types';
 
 export const ComplianceView: React.FC = () => {
-  const { formatCurrency, isIndia, mode } = useLocalization();
+  const { formatCurrency, isIndia, mode, hasPermission } = useLocalization();
   const [activeTab, setActiveTab] = useState<'receipts' | 'form10bd' | 'fcra' | 'giftaid'>('receipts');
   const [receipts, setReceipts] = useState<TaxReceipt[]>([]);
   const [form10BD, setForm10BD] = useState<Form10BDExportReport | null>(null);
@@ -102,144 +103,201 @@ export const ComplianceView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="view-container">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/70 dark:bg-slate-900/70 p-6 rounded-2xl backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
+      <div className="view-header" style={{ marginBottom: '24px' }}>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-            <ShieldCheck className="h-7 w-7 text-indigo-600 dark:text-indigo-400" />
-            Tax Compliance & Statutory Filing Engine
+          <h1 className="view-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <ShieldCheck size={28} color="var(--gold-400)" />
+            <span>Tax Compliance & Statutory Filing Engine</span>
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="view-subtitle">
             {isIndia
               ? 'Income Tax Section 80G Receipts, Form 10BD electronic statement export, and FCRA Foreign Remittances.'
               : 'IRS 501(c)(3) contribution statements, UK HMRC Gift Aid 25% reclaim reports, and EU tax receipts.'}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <select
             value={financialYear}
             onChange={(e) => setFinancialYear(e.target.value)}
-            className="px-3 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+            className="form-select"
+            style={{ width: 'auto', padding: '8px 14px', fontSize: '13px' }}
           >
             <option value="2025-2026">FY 2025 - 2026</option>
             <option value="2024-2025">FY 2024 - 2025</option>
           </select>
-          <button
-            onClick={() => setShowGenerateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold shadow-sm transition-all"
-          >
-            <Plus className="h-4 w-4" />
-            Generate Tax Receipt
-          </button>
+          {hasPermission('manage_compliance') && (
+            <button
+              onClick={() => setShowGenerateModal(true)}
+              className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Plus size={15} />
+              <span>Generate Tax Receipt</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-6">
+      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '24px', flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('receipts')}
-          className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
-            activeTab === 'receipts'
-              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-              : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
-          }`}
+          className="btn"
+          style={{
+            background: activeTab === 'receipts' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'receipts' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'receipts' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
         >
-          <FileCheck className="h-4 w-4" />
-          Tax Receipts ({receipts.length})
+          <FileCheck size={16} />
+          <span>Tax Receipts ({receipts.length})</span>
         </button>
         {isIndia && (
           <button
             onClick={() => setActiveTab('form10bd')}
-            className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'form10bd'
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
+            className="btn"
+            style={{
+              background: activeTab === 'form10bd' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+              color: activeTab === 'form10bd' ? 'var(--gold-400)' : 'var(--text-secondary)',
+              borderBottom: activeTab === 'form10bd' ? '2px solid var(--gold-500)' : '2px solid transparent',
+              borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+              padding: '10px 18px',
+              fontSize: '13.5px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
           >
-            <FileSpreadsheet className="h-4 w-4" />
-            Form 10BD Statement
+            <FileSpreadsheet size={16} />
+            <span>Form 10BD Statement</span>
           </button>
         )}
         <button
           onClick={() => setActiveTab('fcra')}
-          className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
-            activeTab === 'fcra'
-              ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-              : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
-          }`}
+          className="btn"
+          style={{
+            background: activeTab === 'fcra' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'fcra' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'fcra' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
         >
-          <Globe className="h-4 w-4" />
-          FCRA Foreign Remittances ({fcraLogs.length})
+          <Globe size={16} />
+          <span>FCRA Foreign Remittances ({fcraLogs.length})</span>
         </button>
         {!isIndia && (
           <button
             onClick={() => setActiveTab('giftaid')}
-            className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
-              activeTab === 'giftaid'
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                : 'border-transparent text-slate-500 hover:text-slate-900 dark:hover:text-white'
-            }`}
+            className="btn"
+            style={{
+              background: activeTab === 'giftaid' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+              color: activeTab === 'giftaid' ? 'var(--gold-400)' : 'var(--text-secondary)',
+              borderBottom: activeTab === 'giftaid' ? '2px solid var(--gold-500)' : '2px solid transparent',
+              borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+              padding: '10px 18px',
+              fontSize: '13.5px',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
           >
-            <Scale className="h-4 w-4" />
-            UK Gift Aid 25% Claims
+            <Scale size={16} />
+            <span>UK Gift Aid 25% Claims</span>
           </button>
         )}
       </div>
 
       {/* Tab 1: Tax Receipts Table */}
       {activeTab === 'receipts' && (
-        <div className="bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm overflow-hidden p-5 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-slate-900 dark:text-white text-base">Issued Official Tax Receipts</h3>
-            <span className="text-xs text-slate-500">Includes Section 80G, 501(c)(3) & Gift Aid declarations</span>
+        <div className="card" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Issued Official Tax Exemption Receipts ({receipts.length})
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Includes Section 80G, 501(c)(3) and Gift Aid declarations with downloadable PDF receipts.
+              </p>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200/80 dark:border-slate-800/80">
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-5 py-3.5">Receipt #</th>
-                  <th className="px-5 py-3.5">Regime</th>
-                  <th className="px-5 py-3.5">Donor Name</th>
-                  <th className="px-5 py-3.5">PAN / Tax ID</th>
-                  <th className="px-5 py-3.5">Issue Date</th>
-                  <th className="px-5 py-3.5 text-right">Tax Exempt Amount</th>
-                  <th className="px-5 py-3.5 text-right">PDF Download</th>
+                  <th>Receipt #</th>
+                  <th>Regime</th>
+                  <th>Donor Name</th>
+                  <th>PAN / Tax ID</th>
+                  <th>Issue Date</th>
+                  <th style={{ textAlign: 'right' }}>Tax Exempt Amount</th>
+                  <th style={{ textAlign: 'right' }}>PDF Download</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {receipts.map((rcpt) => (
-                  <tr key={rcpt.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                    <td className="px-5 py-3.5 font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                      {rcpt.receipt_number}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">
-                        {rcpt.tax_regime}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 font-medium text-slate-900 dark:text-white">{rcpt.donor_name}</td>
-                    <td className="px-5 py-3.5 font-mono text-xs text-slate-600 dark:text-slate-300 font-semibold">
-                      {rcpt.donor_pan_or_tax_id || '—'}
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-500">{rcpt.issue_date}</td>
-                    <td className="px-5 py-3.5 text-right font-mono font-bold text-slate-900 dark:text-white">
-                      {formatCurrency(rcpt.eligible_tax_amount)}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <a
-                        href={api.getTaxReceiptPdfUrl(rcpt.id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        Download Receipt
-                      </a>
+              <tbody>
+                {receipts.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                      No tax receipts issued for this financial year.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  receipts.map((rcpt) => (
+                    <tr key={rcpt.id}>
+                      <td>
+                        <span className="cell-mono" style={{ color: 'var(--gold-400)', fontWeight: 700 }}>
+                          {rcpt.receipt_number}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="status-pill badge-indigo">
+                          {rcpt.tax_regime}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{rcpt.donor_name}</td>
+                      <td>
+                        <span className="cell-mono" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {rcpt.donor_pan_or_tax_id || '—'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>{rcpt.issue_date}</span>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {formatCurrency(rcpt.eligible_tax_amount)}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <a
+                          href={api.getTaxReceiptPdfUrl(rcpt.id)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-secondary btn-sm"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <Download size={13} />
+                          <span>PDF</span>
+                        </a>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -248,57 +306,61 @@ export const ComplianceView: React.FC = () => {
 
       {/* Tab 2: Form 10BD Electronic Return */}
       {activeTab === 'form10bd' && form10BD && (
-        <div className="bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-6 space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="card" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
                 Income Tax Form 10BD Statement of Donations
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 Statutory annual filing under Section 80G(5)(viii) / Section 35(1A)(i) for FY {form10BD.financial_year}
               </p>
             </div>
-            <div className="flex gap-4 text-xs font-semibold">
-              <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl">
-                <span className="text-slate-500 block">Total Records</span>
-                <span className="text-lg font-mono text-indigo-600 font-bold">{form10BD.total_donations_count}</span>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-sm)', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-subtle)' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block' }}>Total Records</span>
+                <span style={{ fontSize: '18px', fontFamily: 'monospace', color: 'var(--gold-400)', fontWeight: 800 }}>{form10BD.total_donations_count}</span>
               </div>
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl">
-                <span className="text-slate-500 block">Aggregate Amount</span>
-                <span className="text-lg font-mono text-emerald-600 font-bold">
+              <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                <span style={{ fontSize: '11px', color: '#34d399', textTransform: 'uppercase', display: 'block' }}>Aggregate Amount</span>
+                <span style={{ fontSize: '18px', fontFamily: 'monospace', color: '#34d399', fontWeight: 800 }}>
                   {formatCurrency(form10BD.total_aggregate_amount)}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200/80 dark:border-slate-800/80">
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Sl #</th>
-                  <th className="px-4 py-3">Pre-Ack #</th>
-                  <th className="px-4 py-3">ID Type</th>
-                  <th className="px-4 py-3">Unique Donor ID (PAN)</th>
-                  <th className="px-4 py-3">Donor Name</th>
-                  <th className="px-4 py-3">Mode</th>
-                  <th className="px-4 py-3 text-right">Amount (INR)</th>
+                  <th>Sl #</th>
+                  <th>Pre-Ack #</th>
+                  <th>ID Type</th>
+                  <th>Unique Donor ID (PAN)</th>
+                  <th>Donor Name</th>
+                  <th>Mode</th>
+                  <th style={{ textAlign: 'right' }}>Amount (INR)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody>
                 {form10BD.records.map((rec) => (
                   <tr key={rec.sl_no}>
-                    <td className="px-4 py-3 text-slate-500 text-xs">{rec.sl_no}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-indigo-600 dark:text-indigo-400 font-bold">
-                      {rec.pre_acknowledgment_number}
+                    <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{rec.sl_no}</td>
+                    <td>
+                      <span className="cell-mono" style={{ color: 'var(--gold-400)', fontWeight: 700 }}>
+                        {rec.pre_acknowledgment_number}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-xs">{rec.unique_donor_id_type}</td>
-                    <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-900 dark:text-white">
-                      {rec.unique_donor_id_number}
+                    <td><span style={{ fontSize: '12px' }}>{rec.unique_donor_id_type}</span></td>
+                    <td>
+                      <span className="cell-mono" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {rec.unique_donor_id_number}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{rec.donor_name}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{rec.mode_of_receipt}</td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{rec.donor_name}</td>
+                    <td><span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{rec.mode_of_receipt}</span></td>
+                    <td style={{ textAlign: 'right', fontWeight: 800, color: '#34d399' }}>
                       {formatCurrency(rec.amount_inr)}
                     </td>
                   </tr>
@@ -311,56 +373,71 @@ export const ComplianceView: React.FC = () => {
 
       {/* Tab 3: FCRA Register */}
       {activeTab === 'fcra' && (
-        <div className="bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-6 space-y-6">
-          <div className="flex justify-between items-center">
+        <div className="card" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
                 Foreign Contribution Regulation Act (FCRA) Register
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 Designated Foreign Remittance Account records and FIRC tracking for MHA Form FC-4 annual return.
               </p>
             </div>
-            <button
-              onClick={() => setShowFcraModal(true)}
-              className="flex items-center gap-2 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
-            >
-              <Plus className="h-4 w-4" />
-              Log Foreign Inflow
-            </button>
+            {hasPermission('manage_compliance') && (
+              <button
+                onClick={() => setShowFcraModal(true)}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Plus size={14} />
+                <span>Log Foreign Inflow</span>
+              </button>
+            )}
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-200/80 dark:border-slate-800/80">
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Remittance Date</th>
-                  <th className="px-4 py-3">Foreign Donor</th>
-                  <th className="px-4 py-3">Country</th>
-                  <th className="px-4 py-3">Foreign Currency</th>
-                  <th className="px-4 py-3">Exchange Rate</th>
-                  <th className="px-4 py-3 text-right">INR Realized</th>
-                  <th className="px-4 py-3">FIRC Ref</th>
+                  <th>Remittance Date</th>
+                  <th>Foreign Donor</th>
+                  <th>Country</th>
+                  <th>Foreign Currency</th>
+                  <th>Exchange Rate</th>
+                  <th style={{ textAlign: 'right' }}>INR Realized</th>
+                  <th>FIRC Ref</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {fcraLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td className="px-4 py-3 text-xs text-slate-500">{log.remittance_date}</td>
-                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{log.donor_name}</td>
-                    <td className="px-4 py-3 text-xs font-semibold">{log.donor_country}</td>
-                    <td className="px-4 py-3 font-mono text-xs">
-                      {log.foreign_currency} {log.foreign_amount.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500">₹{log.exchange_rate}</td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      {formatCurrency(log.inr_realized_amount)}
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
-                      {log.firc_reference || '—'}
+              <tbody>
+                {fcraLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                      No FCRA foreign remittances recorded.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  fcraLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td><span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{log.remittance_date}</span></td>
+                      <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{log.donor_name}</td>
+                      <td><span className="status-pill badge-neutral">{log.donor_country}</span></td>
+                      <td>
+                        <span className="cell-mono">
+                          {log.foreign_currency} {log.foreign_amount.toLocaleString()}
+                        </span>
+                      </td>
+                      <td><span className="cell-mono" style={{ color: 'var(--text-muted)' }}>₹{log.exchange_rate}</span></td>
+                      <td style={{ textAlign: 'right', fontWeight: 800, color: '#34d399' }}>
+                        {formatCurrency(log.inr_realized_amount)}
+                      </td>
+                      <td>
+                        <span className="cell-mono" style={{ color: '#60a5fa', fontWeight: 600 }}>
+                          {log.firc_reference || '—'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -369,39 +446,39 @@ export const ComplianceView: React.FC = () => {
 
       {/* Tab 4: UK Gift Aid */}
       {activeTab === 'giftaid' && giftAidReport && (
-        <div className="bg-white/80 dark:bg-slate-900/80 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm p-6 space-y-6">
-          <div className="flex justify-between items-center">
+        <div className="card" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
                 HMRC UK Gift Aid 25% Tax Reclaim Schedule
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">Tax Year: {giftAidReport.tax_year}</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Tax Year: {giftAidReport.tax_year}</p>
             </div>
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl text-right">
-              <span className="text-slate-500 text-xs block font-semibold">Total 25% Reclaim Claimable</span>
-              <span className="text-xl font-bold font-mono text-emerald-600">
+            <div style={{ padding: '10px 16px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', textAlign: 'right' }}>
+              <span style={{ fontSize: '11px', color: '#34d399', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Total 25% Reclaim</span>
+              <span style={{ fontSize: '20px', fontWeight: 800, fontFamily: 'monospace', color: '#34d399' }}>
                 {formatCurrency(giftAidReport.total_tax_reclaim_amount)}
               </span>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 font-semibold">
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Donor Name</th>
-                  <th className="px-4 py-3">UK Tax ID</th>
-                  <th className="px-4 py-3 text-right">Total Giving</th>
-                  <th className="px-4 py-3 text-right">25% Gift Aid Reclaim</th>
+                  <th>Donor Name</th>
+                  <th>UK Tax ID</th>
+                  <th style={{ textAlign: 'right' }}>Total Giving</th>
+                  <th style={{ textAlign: 'right' }}>25% Gift Aid Reclaim</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody>
                 {giftAidReport.donors.map((d) => (
                   <tr key={d.member_id}>
-                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{d.donor_name}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{d.tax_id || '—'}</td>
-                    <td className="px-4 py-3 text-right font-mono">{formatCurrency(d.donation_total)}</td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600">
+                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{d.donor_name}</td>
+                    <td><span className="cell-mono">{d.tax_id || '—'}</span></td>
+                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(d.donation_total)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 800, color: '#34d399' }}>
                       {formatCurrency(d.gift_aid_reclaim_amount)}
                     </td>
                   </tr>
@@ -414,71 +491,68 @@ export const ComplianceView: React.FC = () => {
 
       {/* Modal: Generate Tax Receipt */}
       {showGenerateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Issue Official Tax Exemption Receipt</h3>
-              <button
-                onClick={() => setShowGenerateModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                ✕
+        <div className="modal-overlay" onClick={() => setShowGenerateModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Issue Official Tax Exemption Receipt</h3>
+              <button className="btn btn-icon btn-secondary" onClick={() => setShowGenerateModal(false)}>
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleGenerateReceipt} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Tax Regime *
-                </label>
-                <select
-                  value={taxRegime}
-                  onChange={(e) => setTaxRegime(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                >
-                  <option value="80G_INDIA">Section 80G (India Tax Exemption)</option>
-                  <option value="US_501C3">US 501(c)(3) Church Contribution Receipt</option>
-                  <option value="UK_GIFT_AID">UK Gift Aid 25% Declaration</option>
-                </select>
+            <form onSubmit={handleGenerateReceipt}>
+              <div className="modal-content">
+                <div className="form-grid">
+                  <div className="form-group-full">
+                    <label className="form-label">Tax Regime *</label>
+                    <select
+                      value={taxRegime}
+                      onChange={(e) => setTaxRegime(e.target.value)}
+                      className="form-select"
+                    >
+                      <option value="80G_INDIA">Section 80G (India Tax Exemption)</option>
+                      <option value="US_501C3">US 501(c)(3) Church Contribution Receipt</option>
+                      <option value="UK_GIFT_AID">UK Gift Aid 25% Declaration</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">Contribution ID # *</label>
+                    <input
+                      type="number"
+                      required
+                      value={contributionId}
+                      onChange={(e) => setContributionId(Number(e.target.value))}
+                      className="form-input"
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Donor PAN / Tax ID (For Form 10BD)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., AAAPS1234E"
+                      value={donorPan}
+                      onChange={(e) => setDonorPan(e.target.value)}
+                      className="form-input"
+                      style={{ fontFamily: 'monospace', textTransform: 'uppercase' }}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Contribution ID # *
-                </label>
-                <input
-                  type="number"
-                  required
-                  value={contributionId}
-                  onChange={(e) => setContributionId(Number(e.target.value))}
-                  className="w-full px-3 py-2 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Donor PAN / Tax ID (Mandatory for Form 10BD)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g., AAAPS1234E"
-                  value={donorPan}
-                  onChange={(e) => setDonorPan(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono uppercase rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setShowGenerateModal(false)}
-                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm"
+                  className="btn btn-primary"
                 >
                   Generate Receipt
                 </button>
@@ -490,107 +564,102 @@ export const ComplianceView: React.FC = () => {
 
       {/* Modal: Log FCRA */}
       {showFcraModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">Log FCRA Foreign Remittance</h3>
-              <button
-                onClick={() => setShowFcraModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                ✕
+        <div className="modal-overlay" onClick={() => setShowFcraModal(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Log FCRA Foreign Remittance</h3>
+              <button className="btn btn-icon btn-secondary" onClick={() => setShowFcraModal(false)}>
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleLogFcra} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Foreign Donor / Agency *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., Global Mission Outreach Foundation"
-                  value={donorName}
-                  onChange={(e) => setDonorName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
+            <form onSubmit={handleLogFcra}>
+              <div className="modal-content">
+                <div className="form-grid">
+                  <div className="form-group-full">
+                    <label className="form-label">Foreign Donor / Agency *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g., Global Mission Outreach Foundation"
+                      value={donorName}
+                      onChange={(e) => setDonorName(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Country</label>
+                    <input
+                      type="text"
+                      required
+                      value={donorCountry}
+                      onChange={(e) => setDonorCountry(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Currency</label>
+                    <input
+                      type="text"
+                      required
+                      value={foreignCurrency}
+                      onChange={(e) => setForeignCurrency(e.target.value)}
+                      className="form-input"
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Foreign Amount</label>
+                    <input
+                      type="number"
+                      required
+                      value={foreignAmount}
+                      onChange={(e) => setForeignAmount(parseFloat(e.target.value) || 0)}
+                      className="form-input"
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Exchange Rate</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={exchangeRate}
+                      onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
+                      className="form-input"
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                  </div>
+
+                  <div className="form-group-full">
+                    <label className="form-label">FIRC Reference Number</label>
+                    <input
+                      type="text"
+                      placeholder="FIRC-SBI-2026-..."
+                      value={fircRef}
+                      onChange={(e) => setFircRef(e.target.value)}
+                      className="form-input"
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Country</label>
-                  <input
-                    type="text"
-                    required
-                    value={donorCountry}
-                    onChange={(e) => setDonorCountry(e.target.value)}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Currency</label>
-                  <input
-                    type="text"
-                    required
-                    value={foreignCurrency}
-                    onChange={(e) => setForeignCurrency(e.target.value)}
-                    className="w-full px-3 py-2 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Foreign Amount
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    value={foreignAmount}
-                    onChange={(e) => setForeignAmount(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Exchange Rate
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={exchangeRate}
-                    onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Foreign Inward Remittance Certificate (FIRC) Ref
-                </label>
-                <input
-                  type="text"
-                  placeholder="FIRC-SBI-2026-..."
-                  value={fircRef}
-                  onChange={(e) => setFircRef(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setShowFcraModal(false)}
-                  className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded-xl"
+                  className="btn btn-primary"
                 >
                   Save FCRA Inflow
                 </button>

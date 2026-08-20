@@ -92,11 +92,16 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               )}
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h3 className="modal-title">
                   {member?.title ? `${member.title} ` : ''}
                   {member?.first_name} {member?.last_name}
                 </h3>
+                {member?.leadership_role ? (
+                  <span className={`status-pill badge-${member.leadership_role.toLowerCase()}`}>
+                    ★ {member.leadership_role}
+                  </span>
+                ) : null}
                 <span className={`status-pill status-${member?.status?.toLowerCase().replace(/\s+/g, '-') ?? 'active'}`}>
                   {member?.status}
                 </span>

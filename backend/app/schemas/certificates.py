@@ -25,10 +25,12 @@ class IssueCertificateRequest(BaseModel):
     secondary_name: str | None = None  # e.g., Spouse name, Parents
     issue_date: date = Field(default_factory=date.today)
     event_date: date = Field(default_factory=date.today)
-    officiant_name: str = "Rev. Dr. Samuel Thomas"
+    officiant_name: str = "Pastor Dr. Samuel Thomas"
     witness_1: str | None = None
     witness_2: str | None = None
     church_name: str = "St. Luke's Ecclesia Church"
+    church_registration_no: str | None = None
+    church_address: str | None = None
     notes: str | None = None
 
 
@@ -47,6 +49,8 @@ class IssuedCertificateRead(BaseModel):
     witness_1: str | None = None
     witness_2: str | None = None
     church_name: str
+    church_registration_no: str | None = None
+    church_address: str | None = None
     verification_code: str
     notes: str | None = None
     pdf_file_url: str | None = None

@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 class ChurchProfile(BaseModel):
     name: str = "St. Luke's Ecclesia Church"
-    senior_pastor: str = "Rev. Dr. Samuel Thomas"
+    senior_pastor: str = "Pastor Dr. Samuel Thomas"
     denomination: str = "Ecumenical"
     motto: str | None = "Worship • Community • Discipleship"
     established_year: int | None = 1985

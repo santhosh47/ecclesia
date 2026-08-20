@@ -221,6 +221,8 @@ export const api = {
     witness_1?: string;
     witness_2?: string;
     church_name?: string;
+    church_registration_no?: string;
+    church_address?: string;
     notes?: string;
   }) =>
     request<IssuedCertificate>('/certificates/issue', {

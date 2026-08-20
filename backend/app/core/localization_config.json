@@ -1,11 +1,11 @@
 {
-  "active_mode": "IN",
+  "active_mode": "GLOBAL",
   "organization": {
-    "name": "St. Luke's Cathedral & Parish",
-    "senior_pastor": "Rev. Dr. Samuel Thomas, DD",
+    "name": "Church of Crist",
+    "senior_pastor": "Bro. Baskaran",
     "denomination": "Anglican Communion",
     "motto": "Worship \u2022 Community \u2022 Discipleship",
-    "established_year": 1985,
+    "established_year": 2013,
     "address": "12 Cathedral Road, Bangalore, KA 560001",
     "city": "Bangalore",
     "state": "KA",

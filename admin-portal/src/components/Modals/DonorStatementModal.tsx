@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Printer, Download, FileText, CheckCircle } from 'lucide-react';
 import { api } from '../../api/client';
+import { useLocalization } from '../../context/LocalizationContext';
 import { Contribution, DonorStatement } from '../../types';
 
 interface DonorStatementModalProps {
@@ -9,6 +10,7 @@ interface DonorStatementModalProps {
 }
 
 export const DonorStatementModal: React.FC<DonorStatementModalProps> = ({ memberId, onClose }) => {
+  const { churchProfile, formatCurrency, isIndia } = useLocalization();
   const [statement, setStatement] = useState<DonorStatement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -23,6 +25,14 @@ export const DonorStatementModal: React.FC<DonorStatementModalProps> = ({ member
   }, [memberId]);
 
   if (!memberId) return null;
+
+  const fullAddress = [churchProfile.address, churchProfile.city, churchProfile.state, churchProfile.postal_code]
+    .filter(Boolean)
+    .join(', ');
+
+  const legalId = isIndia
+    ? (churchProfile.tax_id_in_80g ? `80G Reg: ${churchProfile.tax_id_in_80g}` : (churchProfile.pan_number ? `PAN: ${churchProfile.pan_number}` : ''))
+    : (churchProfile.us_ein ? `EIN: ${churchProfile.us_ein}` : (churchProfile.uk_charity_number ? `Charity No: ${churchProfile.uk_charity_number}` : ''));
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -46,11 +56,15 @@ export const DonorStatementModal: React.FC<DonorStatementModalProps> = ({ member
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid var(--border-subtle)', paddingBottom: '20px', marginBottom: '24px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: 'var(--gold-400)' }}>ECCLESIA</span>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: 'var(--gold-400)' }}>
+                      {churchProfile.name || 'ECCLESIA'}
+                    </span>
                   </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Grace Community Church</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>742 Evergreen Terrace, Springfield, IL 62704</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>EIN: 36-1234567 • (217) 555-0100</div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{churchProfile.senior_pastor ? `Senior Pastor: ${churchProfile.senior_pastor}` : (churchProfile.denomination || 'Parish Administration')}</div>
+                  {fullAddress && <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{fullAddress}</div>}
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                    {[legalId, churchProfile.phone, churchProfile.email].filter(Boolean).join(' • ')}
+                  </div>
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
@@ -103,7 +117,7 @@ export const DonorStatementModal: React.FC<DonorStatementModalProps> = ({ member
                           <td>{c.payment_method}</td>
                           <td style={{ color: 'var(--text-muted)' }}>{c.reference_number || '—'}</td>
                           <td style={{ textAlign: 'right', fontWeight: '600' }}>
-                            ${c.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            {formatCurrency(c.amount)}
                           </td>
                         </tr>
                       ))
@@ -113,7 +127,7 @@ export const DonorStatementModal: React.FC<DonorStatementModalProps> = ({ member
                     <tr style={{ background: 'rgba(245, 158, 11, 0.08)', fontWeight: '700' }}>
                       <td colSpan={4} style={{ padding: '14px 18px', fontSize: '14px' }}>Total Tax-Deductible Contributions</td>
                       <td style={{ padding: '14px 18px', textAlign: 'right', fontSize: '16px', color: '#34d399' }}>
-                        ${statement.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(statement.total_amount)}
                       </td>
                     </tr>
                   </tfoot>
@@ -123,8 +137,12 @@ export const DonorStatementModal: React.FC<DonorStatementModalProps> = ({ member
               {/* Tax Exemption Note */}
               <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', lineHeight: '1.5', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
                 <p>
-                  Thank you for your generous and faithful financial support of the ministries and missions of Grace Ecclesia Community Church.
-                  In accordance with IRS regulations, no goods or services were provided in exchange for this contribution other than intangible religious benefits.
+                  Thank you for your generous and faithful financial support of the ministries and missions of {churchProfile.name || 'our church'}.
+                  {isIndia ? (
+                    ' Donations are eligible for tax deductions under Section 80G of the Indian Income Tax Act where registered.'
+                  ) : (
+                    ' In accordance with statutory tax regulations, no goods or services were provided in exchange for this contribution other than intangible religious benefits.'
+                  )}
                   Please retain this document for your personal tax filing.
                 </p>
               </div>

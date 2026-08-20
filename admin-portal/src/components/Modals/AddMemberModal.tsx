@@ -81,14 +81,18 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ households, onCl
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 >
                   <option value="">None</option>
-                  <option value="Mr.">Mr.</option>
-                  <option value="Mrs.">Mrs.</option>
-                  <option value="Ms.">Ms.</option>
                   <option value="Pastor">Pastor</option>
                   <option value="Elder">Elder</option>
                   <option value="Deacon">Deacon</option>
+                  <option value="Minister">Minister</option>
+                  <option value="Preacher">Preacher</option>
+                  <option value="Evangelist">Evangelist</option>
                   <option value="Dr.">Dr.</option>
-                  <option value="Rev.">Rev.</option>
+                  <option value="Mr.">Mr.</option>
+                  <option value="Mrs.">Mrs.</option>
+                  <option value="Ms.">Ms.</option>
+                  <option value="Brother">Brother</option>
+                  <option value="Sister">Sister</option>
                 </select>
               </div>
               <div>
@@ -187,6 +191,23 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ households, onCl
                   <option value="Visitor">Visitor</option>
                   <option value="Clergy">Clergy / Staff</option>
                   <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Leadership & Ministry Category</label>
+                <select
+                  className="form-select"
+                  value={formData.leadership_role || ''}
+                  onChange={(e) => setFormData({ ...formData, leadership_role: e.target.value || null })}
+                >
+                  <option value="">General Member (No Leadership Role)</option>
+                  <option value="Pastor">Pastor</option>
+                  <option value="Elder">Elder</option>
+                  <option value="Deacon">Deacon</option>
+                  <option value="Minister">Minister</option>
+                  <option value="Preacher">Preacher</option>
+                  <option value="Evangelist">Evangelist</option>
                 </select>
               </div>
 

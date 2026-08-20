@@ -25,7 +25,8 @@ class Member(Base):
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     middle_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
-    title: Mapped[str | None] = mapped_column(String(20), nullable=True)  # Mr, Mrs, Pastor, Elder, Deacon, Dr, Rev
+    title: Mapped[str | None] = mapped_column(String(20), nullable=True)  # Pastor, Elder, Deacon, Minister, Preacher, Dr, Mr, Mrs, Ms, Brother, Sister
+    leadership_role: Mapped[str | None] = mapped_column(String(50), nullable=True, default=None)  # Elder, Deacon, Minister, Preacher, Pastor, Evangelist
     
     # Contact Info
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
@@ -56,7 +57,7 @@ class Member(Base):
     emergency_contact_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
     emergency_contact_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     
-    # Membership Status
+    # Membership Status & Category
     status: Mapped[str] = mapped_column(String(50), default="Active")  # Active, Visitor, Regular Attendee, Inactive, Transferred, Clergy
     member_type: Mapped[str] = mapped_column(String(50), default="Adult")  # Adult, Youth, Child, Senior
     

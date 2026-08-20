@@ -21,6 +21,8 @@ def generate_certificate_pdf(
     verification_code: str,
     witness_1: str | None = None,
     witness_2: str | None = None,
+    church_registration_no: str | None = None,
+    church_address: str | None = None,
 ) -> bytes:
     """Generate a clean, high-resolution A4 Landscape PDF certificate."""
 
@@ -65,16 +67,31 @@ def generate_certificate_pdf(
     stream.append("BT")
     stream.append("/F1 20 Tf")
     stream.append("0.20 0.25 0.35 rg")
-    stream.append(f"1 0 0 1 220 {h - 85} Tm")
+    stream.append(f"1 0 0 1 200 {h - 80} Tm")
     stream.append(f"({_escape_pdf_text(church_name.upper())}) Tj")
     stream.append("ET")
+
+    # Church Registration Details & Address Subtitle
+    sub_items = []
+    if church_registration_no:
+        sub_items.append(f"Reg / Trust No: {_escape_pdf_text(church_registration_no)}")
+    if church_address:
+        sub_items.append(_escape_pdf_text(church_address))
+    if sub_items:
+        sub_text = "   |   ".join(sub_items)
+        stream.append("BT")
+        stream.append("/F1 9 Tf")
+        stream.append("0.45 0.50 0.60 rg")
+        stream.append(f"1 0 0 1 180 {h - 98} Tm")
+        stream.append(f"({sub_text}) Tj")
+        stream.append("ET")
 
     # Certificate Title
     stream.append("BT")
     stream.append("/F2 28 Tf")
     stream.append("0.75 0.55 0.15 rg")
     title_text = f"CERTIFICATE OF {certificate_type.upper()}"
-    stream.append(f"1 0 0 1 200 {h - 130} Tm")
+    stream.append(f"1 0 0 1 200 {h - 135} Tm")
     stream.append(f"({_escape_pdf_text(title_text)}) Tj")
     stream.append("ET")
 

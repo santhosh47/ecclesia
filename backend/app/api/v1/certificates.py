@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import load_localization_config
 from app.core.pdf_generator import generate_certificate_pdf
 from app.database.session import get_db
 from app.models.certificates import CertificateTemplate, IssuedCertificate
@@ -48,6 +49,11 @@ def issue_certificate(payload: IssueCertificateRequest, db: Session = Depends(ge
     cert_num = f"CERT-{type_code}-{date.today().year}-{count + 1:04d}"
     verification_code = uuid.uuid4().hex[:12].upper()
 
+    config = load_localization_config()
+    org = config.get("organization", {})
+    default_reg = org.get("tax_id_in_80g") or org.get("pan_number") or org.get("us_ein") or org.get("uk_charity_number")
+    default_address = org.get("address")
+
     cert = IssuedCertificate(
         certificate_number=cert_num,
         certificate_type=payload.certificate_type,
@@ -59,7 +65,9 @@ def issue_certificate(payload: IssueCertificateRequest, db: Session = Depends(ge
         officiant_name=payload.officiant_name,
         witness_1=payload.witness_1,
         witness_2=payload.witness_2,
-        church_name=payload.church_name,
+        church_name=payload.church_name or org.get("name", "St. Luke's Ecclesia Church"),
+        church_registration_no=payload.church_registration_no or default_reg,
+        church_address=payload.church_address or default_address,
         verification_code=verification_code,
         notes=payload.notes,
         pdf_file_url=f"/api/v1/certificates/issued/{cert_num}/pdf",
@@ -77,6 +85,11 @@ def download_certificate_pdf(certificate_id: int, db: Session = Depends(get_db))
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found.")
 
+    config = load_localization_config()
+    org = config.get("organization", {})
+    church_reg = cert.church_registration_no or org.get("tax_id_in_80g") or org.get("pan_number") or org.get("us_ein") or org.get("uk_charity_number")
+    church_addr = cert.church_address or org.get("address")
+
     pdf_bytes = generate_certificate_pdf(
         certificate_type=cert.certificate_type,
         recipient_name=cert.recipient_name,
@@ -89,6 +102,8 @@ def download_certificate_pdf(certificate_id: int, db: Session = Depends(get_db))
         verification_code=cert.verification_code,
         witness_1=cert.witness_1,
         witness_2=cert.witness_2,
+        church_registration_no=church_reg,
+        church_address=church_addr,
     )
 
     filename = f"{cert.certificate_type.lower()}_certificate_{cert.certificate_number}.pdf"

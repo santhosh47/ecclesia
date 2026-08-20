@@ -24,8 +24,8 @@ interface LocalizationContextType {
 }
 
 const defaultProfile: ChurchProfile = {
-  name: "St. Luke's Ecclesia Church",
-  senior_pastor: "Rev. Dr. Samuel Thomas",
+  name: "Ecclesia Church",
+  senior_pastor: "Pastor Dr. Samuel Thomas",
   denomination: "Ecumenical & Anglican Communion",
   motto: "Worship • Community • Discipleship",
   established_year: 1985,
@@ -82,8 +82,19 @@ const LocalizationContext = createContext<LocalizationContextType>(defaultLocali
 
 export const LocalizationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState<LocalizationConfig | null>(null);
-  const [mode, setMode] = useState<LocalizationMode>('IN');
-  const [churchProfile, setChurchProfile] = useState<ChurchProfile>(defaultProfile);
+  const [mode, setMode] = useState<LocalizationMode>(() => {
+    const savedMode = localStorage.getItem('ecclesia_localization_mode') as LocalizationMode;
+    return savedMode || 'IN';
+  });
+  const [churchProfile, setChurchProfile] = useState<ChurchProfile>(() => {
+    try {
+      const savedProfile = localStorage.getItem('ecclesia_church_profile');
+      if (savedProfile) return JSON.parse(savedProfile);
+    } catch (e) {
+      console.error('Failed to parse saved church profile:', e);
+    }
+    return defaultProfile;
+  });
   const [modules, setModules] = useState<Record<string, boolean>>(defaultModules);
   const [roles, setRoles] = useState<RoleDefinition[]>([]);
   const [currentRole, setCurrentRole] = useState<string>('super_admin');
@@ -94,12 +105,18 @@ export const LocalizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(true);
       const data = await api.getLocalizationConfig();
       setConfig(data);
-      setMode(data.active_mode);
-      if (data.organization) setChurchProfile(data.organization);
+      if (data.active_mode) {
+        setMode(data.active_mode);
+        localStorage.setItem('ecclesia_localization_mode', data.active_mode);
+      }
+      if (data.organization) {
+        setChurchProfile(data.organization);
+        localStorage.setItem('ecclesia_church_profile', JSON.stringify(data.organization));
+      }
       if (data.modules) setModules(data.modules);
       if (data.roles) setRoles(data.roles);
     } catch (err) {
-      console.warn('Failed to load localization config from backend, using default values', err);
+      console.warn('Failed to load localization config from backend, using cached/default values', err);
     } finally {
       setLoading(false);
     }
@@ -111,24 +128,31 @@ export const LocalizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const toggleMode = async (targetMode?: LocalizationMode) => {
     const nextMode = targetMode || (mode === 'IN' ? 'GLOBAL' : 'IN');
+    setMode(nextMode);
+    localStorage.setItem('ecclesia_localization_mode', nextMode);
     try {
       const updatedConfig = await api.toggleLocalizationMode(nextMode);
       setConfig(updatedConfig);
       setMode(updatedConfig.active_mode);
+      localStorage.setItem('ecclesia_localization_mode', updatedConfig.active_mode);
     } catch (err) {
-      console.error('Failed to toggle localization mode:', err);
-      setMode(nextMode);
+      console.error('Failed to toggle localization mode on backend:', err);
     }
   };
 
   const updateChurchProfile = async (profile: Partial<ChurchProfile>) => {
+    const merged = { ...churchProfile, ...profile };
+    setChurchProfile(merged);
+    localStorage.setItem('ecclesia_church_profile', JSON.stringify(merged));
     try {
       const updatedConfig = await api.updateChurchProfile(profile);
       setConfig(updatedConfig);
-      if (updatedConfig.organization) setChurchProfile(updatedConfig.organization);
+      if (updatedConfig.organization) {
+        setChurchProfile(updatedConfig.organization);
+        localStorage.setItem('ecclesia_church_profile', JSON.stringify(updatedConfig.organization));
+      }
     } catch (err) {
-      console.error('Failed to update church profile:', err);
-      setChurchProfile((prev) => ({ ...prev, ...profile }));
+      console.error('Failed to update church profile on backend:', err);
     }
   };
 
