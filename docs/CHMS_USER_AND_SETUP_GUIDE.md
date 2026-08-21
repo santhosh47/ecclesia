@@ -203,3 +203,34 @@ First Name,Last Name,Title,Email,Phone,Gender,Status,Member Type,Household Name,
    Run behind NGINX or Caddy with Let's Encrypt SSL certificates.
 3. **Data Backups**:
    Schedule daily automated dumps of PostgreSQL / SQLite databases and media folders.
+
+---
+
+## 8. 100% Free Cloud Hosting Guide (Render + Neon)
+
+Ecclesia supports **All-in-One single-service hosting** (FastAPI serving the React SPA bundle) backed by serverless PostgreSQL:
+
+### Step 1: Free Database on Neon.tech
+1. Sign up at [neon.tech](https://neon.tech) and create a project named `ecclesia`.
+2. Copy the **Connection String** (`postgresql://user:pass@ep-xyz.us-east-2.aws.neon.tech/neondb?sslmode=require`).
+
+### Step 2: Free Web Service on Render.com
+1. Connect your GitHub repository on [render.com](https://render.com) (New + > Web Service).
+2. Configure settings:
+   - **Environment / Runtime**: `Python 3`
+   - **Build Command**:
+     ```bash
+     cd admin-portal && npm install && npm run build && cd ../backend && pip install -r requirements.txt
+     ```
+   - **Start Command**:
+     ```bash
+     cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+     ```
+   - **Instance Type**: `Free`
+3. Environment Variables:
+   - `DATABASE_URL`: `postgresql+psycopg://...` (your Neon connection string)
+   - `ENVIRONMENT`: `production`
+   - `DEBUG`: `false`
+   - `API_V1_PREFIX`: `/api/v1`
+4. Click **Deploy Web Service**. Tables are created automatically on first startup.
+
