@@ -13,6 +13,7 @@ import {
   Calendar,
   CheckCircle,
 } from 'lucide-react';
+import { useLocalization } from '../context/LocalizationContext';
 import { Contribution, Expense, FinanceSummary, Member, PledgeCampaign } from '../types';
 
 interface FinancesViewProps {
@@ -42,6 +43,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
   onDeleteContribution,
   onDeleteExpense,
 }) => {
+  const { currencySymbol, formatCurrency, hasPermission } = useLocalization();
   const [activeTab, setActiveTab] = useState<'contributions' | 'expenses' | 'campaigns' | 'statements'>('contributions');
   const [fundFilter, setFundFilter] = useState('ALL');
   const [selectedStatementMember, setSelectedStatementMember] = useState<number | ''>('');
@@ -53,25 +55,27 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)' }}>
             Church Stewardship & Finances
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '13.5px' }}>
-            Tithes, general offerings, capital pledge campaigns, operational expenses, and tax statements
+            Weekly offerings, general contributions, pledge campaigns, operational expenses, and tax statements
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-primary" onClick={onOpenRecordGiving}>
-            <Plus size={16} />
-            <span>Record Giving</span>
-          </button>
-          <button className="btn btn-secondary" onClick={onOpenRecordExpense}>
-            <Plus size={16} />
-            <span>Record Expense</span>
-          </button>
-        </div>
+        {hasPermission('manage_finances') && (
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn btn-primary" onClick={onOpenRecordGiving}>
+              <Plus size={16} />
+              <span>Record Contribution</span>
+            </button>
+            <button className="btn btn-secondary" onClick={onOpenRecordExpense}>
+              <Plus size={16} />
+              <span>Record Expense</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Financial KPI Banner */}
@@ -80,9 +84,9 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           <div className="kpi-info">
             <h3>2026 YTD Income</h3>
             <div className="kpi-value" style={{ color: '#34d399' }}>
-              ${summary?.total_income_ytd.toLocaleString(undefined, { minimumFractionDigits: 2 }) ?? '0.00'}
+              {formatCurrency(summary?.total_income_ytd ?? 0)}
             </div>
-            <div className="kpi-subtext">Total tithes, offerings, & special gifts</div>
+            <div className="kpi-subtext">Total offerings, contributions, & gifts</div>
           </div>
           <div className="kpi-icon-wrap" style={{ color: 'var(--emerald)' }}>
             <TrendingUp size={24} />
@@ -93,9 +97,9 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           <div className="kpi-info">
             <h3>2026 YTD Expenses</h3>
             <div className="kpi-value" style={{ color: '#fb7185' }}>
-              ${summary?.total_expense_ytd.toLocaleString(undefined, { minimumFractionDigits: 2 }) ?? '0.00'}
+              {formatCurrency(summary?.total_expense_ytd ?? 0)}
             </div>
-            <div className="kpi-subtext">Operating, missions, utilities, & honorariums</div>
+            <div className="kpi-subtext">Operating, missions, utilities, & ministries</div>
           </div>
           <div className="kpi-icon-wrap" style={{ color: 'var(--rose)' }}>
             <TrendingDown size={24} />
@@ -106,7 +110,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           <div className="kpi-info">
             <h3>Net Operating Cash</h3>
             <div className="kpi-value" style={{ color: (summary?.net_operating_balance ?? 0) >= 0 ? '#34d399' : '#fb7185' }}>
-              ${summary?.net_operating_balance.toLocaleString(undefined, { minimumFractionDigits: 2 }) ?? '0.00'}
+              {formatCurrency(summary?.net_operating_balance ?? 0)}
             </div>
             <div className="kpi-subtext">Available stewardship balance</div>
           </div>
@@ -119,7 +123,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           <div className="kpi-info">
             <h3>Active Pledges</h3>
             <div className="kpi-value">
-              ${summary?.total_pledges_active.toLocaleString(undefined, { minimumFractionDigits: 2 }) ?? '0.00'}
+              {formatCurrency(summary?.total_pledges_active ?? 0)}
             </div>
             <div className="kpi-subtext">Committed towards capital campaigns</div>
           </div>
@@ -158,11 +162,13 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                 onChange={(e) => setFundFilter(e.target.value)}
               >
                 <option value="ALL">All Funds</option>
-                <option value="Tithe">Tithe</option>
+                <option value="Weekly Offering">Weekly Offering</option>
                 <option value="General Offering">General Offering</option>
+                <option value="Special Contribution">Special Contribution</option>
                 <option value="Building Fund">Building Fund</option>
                 <option value="Missions">Missions</option>
                 <option value="Benevolence">Benevolence</option>
+                <option value="Thanksgiving Offering">Thanksgiving Offering</option>
               </select>
             </div>
           </div>
@@ -202,20 +208,25 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                         <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{c.reference_number || '—'}</td>
                         <td>
                           <strong style={{ color: '#34d399', fontSize: '14px' }}>
-                            +${c.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            +{formatCurrency(c.amount)}
                           </strong>
                         </td>
                         <td style={{ textAlign: 'right' }}>
-                          <button
-                            className="btn btn-icon btn-danger btn-sm"
-                            onClick={() => {
-                              if (confirm('Delete this contribution record?')) {
-                                onDeleteContribution(c.id);
-                              }
-                            }}
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          {hasPermission('manage_finances') ? (
+                            <button
+                              className="btn btn-icon btn-danger btn-sm"
+                              onClick={() => {
+                                if (confirm('Delete this contribution record?')) {
+                                  onDeleteContribution(c.id);
+                                }
+                              }}
+                              title="Delete Record"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Read Only</span>
+                          )}
                         </td>
                       </tr>
                     ))

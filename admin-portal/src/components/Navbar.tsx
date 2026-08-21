@@ -2,13 +2,16 @@ import React from 'react';
 import {
   DollarSign,
   HeartHandshake,
+  LogOut,
   Menu,
   Moon,
   Search,
   Sun,
+  User as UserIcon,
   UserCheck,
   UserPlus,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useLocalization } from '../context/LocalizationContext';
 
 interface NavbarProps {
@@ -35,6 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleMobileMenu,
 }) => {
   const { isIndia, toggleMode, churchProfile, currentRole, setCurrentRole, roles, hasPermission } = useLocalization();
+  const { user, isSuperAdmin, activeRole, setActiveRoleOverride, logout } = useAuth();
 
   const getInitials = (name: string) => {
     return name
@@ -43,6 +47,11 @@ export const Navbar: React.FC<NavbarProps> = ({
       .map((n) => n[0])
       .join('')
       .toUpperCase();
+  };
+
+  const getRoleDisplayName = (roleId: string) => {
+    const found = roles.find((r) => r.id === roleId);
+    return found ? found.name : roleId.replace(/_/g, ' ').toUpperCase();
   };
 
   return (
@@ -70,40 +79,62 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       <div className="top-actions">
-        {/* Role Switcher Pill */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-subtle)',
-            padding: '4px 10px',
-            borderRadius: 'var(--radius-full)',
-            fontSize: '12px',
-          }}
-        >
-          <span style={{ color: 'var(--text-muted)' }}>Role:</span>
-          <select
-            value={currentRole}
-            onChange={(e) => setCurrentRole(e.target.value)}
+        {/* Role: Only Super Admin gets the dropdown switcher. Other roles see their fixed role badge */}
+        {isSuperAdmin ? (
+          <div
             style={{
-              border: 'none',
-              background: 'transparent',
-              fontWeight: 700,
-              color: 'var(--text-primary)',
-              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-subtle)',
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-full)',
               fontSize: '12px',
-              outline: 'none',
             }}
           >
-            {roles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </div>
+            <span style={{ color: 'var(--text-muted)' }}>Role:</span>
+            <select
+              value={activeRole}
+              onChange={(e) => {
+                setActiveRoleOverride(e.target.value);
+                setCurrentRole(e.target.value);
+              }}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                fontWeight: 700,
+                color: 'var(--gold-400)',
+                cursor: 'pointer',
+                fontSize: '12px',
+                outline: 'none',
+              }}
+            >
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(99, 102, 241, 0.12)',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+              padding: '4px 12px',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '12px',
+              fontWeight: 700,
+              color: '#818cf8',
+            }}
+          >
+            <span>★ {getRoleDisplayName(user?.role || currentRole)}</span>
+          </div>
+        )}
 
         {/* Localization Switcher Pill */}
         <button
@@ -123,7 +154,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span>{isIndia ? '🇮🇳 India' : '🌐 Global'}</span>
         </button>
 
-        {/* Quick Action Shortcuts (Responsive) */}
+        {/* Quick Action Shortcuts (Protected by Permissions) */}
         {hasPermission('edit_members') && (
           <button className="btn btn-secondary btn-sm nav-action-btn" onClick={onOpenAddMember} title="Add Member">
             <UserPlus size={14} />
@@ -154,44 +185,55 @@ export const Navbar: React.FC<NavbarProps> = ({
           {theme === 'dark' ? <Sun size={16} color="#fbbf24" /> : <Moon size={16} color="#475569" />}
         </button>
 
-        {/* Church Profile Branding Badge */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '4px 10px',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-full)',
-          }}
-        >
-          <div
-            style={{
-              width: '26px',
-              height: '26px',
-              borderRadius: 'var(--radius-full)',
-              background: 'var(--gold-gradient)',
-              color: '#090d16',
-              fontWeight: '700',
-              fontSize: '11px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            {getInitials(churchProfile.name)}
-          </div>
-          <div style={{ lineHeight: '1.2' }} className="hide-on-mobile">
-            <div style={{ fontSize: '11px', fontWeight: '700', maxWidth: '140px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={churchProfile.name}>
-              {churchProfile.name}
+        {/* User Profile & Logout */}
+        {user && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '4px 10px',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-full)',
+              }}
+              className="hide-on-mobile"
+            >
+              <div
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: 'var(--radius-full)',
+                  background: isSuperAdmin ? 'var(--gold-gradient)' : 'rgba(99, 102, 241, 0.2)',
+                  color: isSuperAdmin ? '#090d16' : '#818cf8',
+                  fontWeight: '700',
+                  fontSize: '11px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {user.full_name ? user.full_name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ fontSize: '12px', fontWeight: '600', maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user.full_name || user.username}
+              </div>
             </div>
-            <div style={{ fontSize: '10px', color: 'var(--gold-400)' }}>
-              {isIndia ? '80G & FCRA' : '501(c)(3)'}
-            </div>
+
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={logout}
+              title="Sign Out"
+              style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 10px', fontSize: '12px' }}
+            >
+              <LogOut size={13} color="#f43f5e" />
+              <span className="hide-on-mobile">Sign Out</span>
+            </button>
           </div>
-        </div>
+        )}
       </div>
     </header>
   );
 };
+

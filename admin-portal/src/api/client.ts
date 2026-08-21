@@ -36,7 +36,11 @@ import {
   TaxReceipt,
   TrialBalanceReport,
   UKGiftAidClaimReport,
+  User,
+  UserCreatePayload,
+  UserUpdatePayload,
   VisitorFollowUp,
+  AuthResponse,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api/v1' : 'http://localhost:8000/api/v1');
@@ -115,6 +119,7 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  deleteHousehold: (id: number) => request<void>(`/households/${id}`, { method: 'DELETE' }),
 
   // Milestones
   getUpcomingMilestones: (days: number = 30, milestoneType?: string) => {
@@ -357,6 +362,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  deleteContribution: (id: number) =>
+    request<void>(`/finances/contributions/${id}`, { method: 'DELETE' }),
   getExpenses: (params?: { category?: string; start_date?: string; end_date?: string }) => {
     const query = new URLSearchParams();
     if (params?.category) query.append('category', params.category);
@@ -369,6 +376,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  deleteExpense: (id: number) =>
+    request<void>(`/finances/expenses/${id}`, { method: 'DELETE' }),
   getPledgeCampaigns: () => request<PledgeCampaign[]>('/finances/campaigns'),
   getCampaigns: () => request<PledgeCampaign[]>('/finances/campaigns'),
   createPledgeCampaign: (data: Partial<PledgeCampaign>) =>
@@ -423,6 +432,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  updateMinistry: (id: number, data: Partial<Ministry>) =>
+    request<Ministry>(`/ministries/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteMinistry: (id: number) => request<void>(`/ministries/${id}`, { method: 'DELETE' }),
   joinMinistry: (ministryId: number, memberId: number, role: string = 'Member') =>
     request<{ status: string }>('/ministries/join', {
       method: 'POST',
@@ -439,6 +454,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  deletePastoralNote: (id: number) => request<void>(`/pastoral/notes/${id}`, { method: 'DELETE' }),
   getPrayerRequests: (status?: string) => {
     const query = status ? `?status=${encodeURIComponent(status)}` : '';
     return request<PrayerRequest[]>(`/pastoral/prayers${query}`);
@@ -453,6 +469,7 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  deletePrayerRequest: (id: number) => request<void>(`/pastoral/prayers/${id}`, { method: 'DELETE' }),
   getVisitorFollowUps: () => request<VisitorFollowUp[]>('/pastoral/visitors'),
   createVisitorFollowUp: (data: Partial<VisitorFollowUp>) =>
     request<VisitorFollowUp>('/pastoral/visitors', {
@@ -464,6 +481,30 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+
+  // Authentication
+  login: (payload: { username: string; password: string }) =>
+    request<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  logout: () => request<{ status: string }>('/auth/logout', { method: 'POST' }),
+  getCurrentUser: (username?: string) =>
+    request<User>(`/auth/me${username ? `?username=${encodeURIComponent(username)}` : ''}`),
+
+  // User Accounts Management
+  getUsers: () => request<User[]>('/users'),
+  createUser: (payload: UserCreatePayload) =>
+    request<User>('/users', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateUser: (id: number, payload: UserUpdatePayload) =>
+    request<User>(`/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  deleteUser: (id: number) => request<void>(`/users/${id}`, { method: 'DELETE' }),
 
   // System Seed
   seedDatabase: () => request<{ status: string; message: string }>('/seed', { method: 'POST' }),

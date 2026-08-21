@@ -731,3 +731,38 @@ export interface IssuedCertificate {
   pdf_file_url?: string | null;
   created_at: string;
 }
+
+// --- Authentication & User Management ---
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  last_login?: string | null;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+export interface UserCreatePayload {
+  username: string;
+  email: string;
+  full_name: string;
+  password: string;
+  role: string;
+}
+
+export interface UserUpdatePayload {
+  email?: string;
+  full_name?: string;
+  role?: string;
+  is_active?: boolean;
+  password?: string;
+}
+

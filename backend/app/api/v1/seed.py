@@ -21,18 +21,32 @@ from app.models.messaging import MessageBroadcast, MessageLog, MessageTemplate
 from app.models.ministry import MemberMinistry, Ministry
 from app.models.pastoral import PastoralCareNote, PrayerRequest, VisitorFollowUp
 
+from app.models.user import User
+
 router = APIRouter(prefix="/seed", tags=["seed"])
 
 
 @router.post("", status_code=200)
 def seed_church_data(db: Session = Depends(get_db)) -> dict[str, str]:
-    """Seed comprehensive church demo dataset including double-entry bookkeeping, church activities, certificates, and tax compliance."""
+    """Seed comprehensive church demo dataset including users, double-entry bookkeeping, church activities, certificates, and tax compliance."""
     today = date.today()
 
     # Rebuild database tables to ensure all new columns and tables exist
     bind = db.get_bind()
     Base.metadata.drop_all(bind=bind)
     Base.metadata.create_all(bind=bind)
+
+    # 0. User Accounts
+    default_users = [
+        User(username="admin", email="admin@ecclesia.org", full_name="Senior Pastor / Administrator", hashed_password=User.hash_password("admin123"), role="super_admin", is_active=True),
+        User(username="pastor", email="pastor@ecclesia.org", full_name="Pastor Dr. Samuel Thomas", hashed_password=User.hash_password("pastor123"), role="pastor", is_active=True),
+        User(username="treasurer", email="treasurer@ecclesia.org", full_name="Head Treasurer & Accountant", hashed_password=User.hash_password("treasurer123"), role="treasurer", is_active=True),
+        User(username="elder", email="elder@ecclesia.org", full_name="Elder David Sterling", hashed_password=User.hash_password("elder123"), role="elder", is_active=True),
+        User(username="staff", email="staff@ecclesia.org", full_name="Church Office Secretary", hashed_password=User.hash_password("staff123"), role="sub_admin", is_active=True),
+        User(username="leader", email="leader@ecclesia.org", full_name="Worship & Youth Leader", hashed_password=User.hash_password("leader123"), role="ministry_leader", is_active=True),
+    ]
+    db.add_all(default_users)
+    db.commit()
 
     # 1. Households
     households_data = [

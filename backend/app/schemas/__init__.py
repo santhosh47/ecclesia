@@ -88,8 +88,20 @@ from app.schemas.pastoral import (
     VisitorFollowUpRead,
     VisitorFollowUpUpdate,
 )
+from app.schemas.user import (
+    AuthResponse,
+    UserCreate,
+    UserLogin,
+    UserRead,
+    UserUpdate,
+)
 
 __all__ = [
+    "UserLogin",
+    "UserCreate",
+    "UserUpdate",
+    "UserRead",
+    "AuthResponse",
     "MemberCreate",
     "MemberRead",
     "MemberUpdate",

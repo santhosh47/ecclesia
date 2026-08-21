@@ -157,7 +157,7 @@ export const CertificatesView: React.FC = () => {
             Generate and verify official church certificates for Holy Baptism, Matrimony, Child Dedication, Confirmation, and Membership.
           </p>
         </div>
-        {hasPermission('manage_certificates') && (
+        {(hasPermission('issue_certificates') || hasPermission('manage_certificates')) && (
           <button onClick={() => setShowIssueModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Plus size={16} />
             <span>Issue Official Certificate</span>

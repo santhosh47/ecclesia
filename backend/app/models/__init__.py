@@ -12,8 +12,10 @@ from app.models.member import Member
 from app.models.messaging import MessageBroadcast, MessageLog, MessageTemplate
 from app.models.ministry import MemberMinistry, Ministry
 from app.models.pastoral import PastoralCareNote, PrayerRequest, VisitorFollowUp
+from app.models.user import User
 
 __all__ = [
+    "User",
     "Member",
     "Household",
     "Ministry",

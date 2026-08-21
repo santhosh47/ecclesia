@@ -14,8 +14,10 @@ import {
   Plus,
   Trash2,
   Download,
+  Edit2,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useLocalization } from '../context/LocalizationContext';
 import { MemberDetail, PastoralCareNote } from '../types';
 
 interface MemberDetailModalProps {
@@ -23,6 +25,7 @@ interface MemberDetailModalProps {
   onClose: () => void;
   onOpenDonorStatement: (memberId: number) => void;
   onRefreshList: () => void;
+  onOpenEditMember?: (member: MemberDetail) => void;
 }
 
 export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
@@ -30,7 +33,9 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
   onClose,
   onOpenDonorStatement,
   onRefreshList,
+  onOpenEditMember,
 }) => {
+  const { hasPermission } = useLocalization();
   const [member, setMember] = useState<MemberDetail | null>(null);
   const [notes, setNotes] = useState<PastoralCareNote[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'finances' | 'pastoral'>('overview');
@@ -111,9 +116,22 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               </div>
             </div>
           </div>
-          <button className="btn btn-icon btn-secondary" onClick={onClose}>
-            <X size={18} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {hasPermission('edit_members') && onOpenEditMember && member && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => onOpenEditMember(member)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Edit Member Details"
+              >
+                <Edit2 size={14} />
+                <span>Edit Profile</span>
+              </button>
+            )}
+            <button className="btn btn-icon btn-secondary" onClick={onClose}>
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Modal Tabs Navigation */}
@@ -370,7 +388,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                       No pastoral notes logged for this member yet.
                     </p>
                   ) : (
-                    notes.map((n) => (
+                    notes.map((n: PastoralCareNote) => (
                       <div key={n.id} className="card" style={{ padding: '16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                           <span className="status-pill status-clergy">{n.category}</span>

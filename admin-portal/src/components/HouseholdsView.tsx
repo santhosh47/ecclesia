@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Home, Users, MapPin, Phone, Plus, UserCheck } from 'lucide-react';
+import { Home, Users, MapPin, Phone, Plus, UserCheck, Edit2, Trash2 } from 'lucide-react';
+import { useLocalization } from '../context/LocalizationContext';
 import { Household } from '../types';
 
 interface HouseholdsViewProps {
@@ -7,6 +8,8 @@ interface HouseholdsViewProps {
   isLoading: boolean;
   onSelectMember: (memberId: number) => void;
   onAddHousehold: (householdData: Partial<Household>) => void;
+  onEditHousehold: (household: Household) => void;
+  onDeleteHousehold: (householdId: number) => void;
 }
 
 export const HouseholdsView: React.FC<HouseholdsViewProps> = ({
@@ -14,7 +17,10 @@ export const HouseholdsView: React.FC<HouseholdsViewProps> = ({
   isLoading,
   onSelectMember,
   onAddHousehold,
+  onEditHousehold,
+  onDeleteHousehold,
 }) => {
+  const { hasPermission } = useLocalization();
   const [showAddModal, setShowAddModal] = useState(false);
   const [newHousehold, setNewHousehold] = useState({
     name: '',
@@ -35,7 +41,7 @@ export const HouseholdsView: React.FC<HouseholdsViewProps> = ({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)' }}>
             Households & Family Units
@@ -44,10 +50,12 @@ export const HouseholdsView: React.FC<HouseholdsViewProps> = ({
             {households.length} registered church families and connected household members
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-          <Plus size={16} />
-          <span>New Family Unit</span>
-        </button>
+        {hasPermission('edit_members') && (
+          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+            <Plus size={16} />
+            <span>New Family Unit</span>
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -85,6 +93,28 @@ export const HouseholdsView: React.FC<HouseholdsViewProps> = ({
                     </div>
                   </div>
                 </div>
+                {hasPermission('edit_members') && (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      className="btn btn-icon btn-secondary btn-sm"
+                      onClick={() => onEditHousehold(h)}
+                      title="Edit Family Details"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button
+                      className="btn btn-icon btn-danger btn-sm"
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete ${h.name}? Members will become independent.`)) {
+                          onDeleteHousehold(h.id);
+                        }
+                      }}
+                      title="Delete Household"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Household Address & Contact */}
@@ -185,6 +215,7 @@ export const HouseholdsView: React.FC<HouseholdsViewProps> = ({
                     <label className="form-label">City</label>
                     <input
                       className="form-input"
+                      placeholder="e.g. Bangalore"
                       value={newHousehold.city}
                       onChange={(e) => setNewHousehold({ ...newHousehold, city: e.target.value })}
                     />
@@ -193,6 +224,7 @@ export const HouseholdsView: React.FC<HouseholdsViewProps> = ({
                     <label className="form-label">State / Region</label>
                     <input
                       className="form-input"
+                      placeholder="e.g. KA"
                       value={newHousehold.state}
                       onChange={(e) => setNewHousehold({ ...newHousehold, state: e.target.value })}
                     />
@@ -201,6 +233,7 @@ export const HouseholdsView: React.FC<HouseholdsViewProps> = ({
                     <label className="form-label">Postal Code</label>
                     <input
                       className="form-input"
+                      placeholder="e.g. 560034"
                       value={newHousehold.postal_code}
                       onChange={(e) => setNewHousehold({ ...newHousehold, postal_code: e.target.value })}
                     />
@@ -209,6 +242,7 @@ export const HouseholdsView: React.FC<HouseholdsViewProps> = ({
                     <label className="form-label">Home Phone</label>
                     <input
                       className="form-input"
+                      placeholder="e.g. +91 80 2553 0101"
                       value={newHousehold.home_phone}
                       onChange={(e) => setNewHousehold({ ...newHousehold, home_phone: e.target.value })}
                     />

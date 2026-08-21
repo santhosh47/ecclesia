@@ -10,8 +10,11 @@ import {
   Calendar,
   Phone,
   HeartHandshake,
+  CalendarPlus,
+  Check,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useLocalization } from '../context/LocalizationContext';
 import { AbsenteeAlertItem, AttendanceRecord, AttendanceSummary, Event, Member } from '../types';
 
 interface AttendanceViewProps {
@@ -20,6 +23,7 @@ interface AttendanceViewProps {
   isLoading: boolean;
   onOpenCheckInModal: () => void;
   onSelectMember: (memberId: number) => void;
+  onRefreshEvents?: () => void;
 }
 
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
@@ -28,22 +32,31 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   isLoading,
   onOpenCheckInModal,
   onSelectMember,
+  onRefreshEvents,
 }) => {
+  const { hasPermission } = useLocalization();
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [eventRecords, setEventRecords] = useState<AttendanceRecord[]>([]);
   const [absenteeList, setAbsenteeList] = useState<AbsenteeAlertItem[]>([]);
   const [activeTab, setActiveTab] = useState<'checkin' | 'absentees'>('checkin');
-  const [isUpdatingCheckIn, setIsUpdatingCheckIn] = useState(false);
+  const [updatingMemberId, setUpdatingMemberId] = useState<number | null>(null);
+  const [isCreatingQuickEvent, setIsCreatingQuickEvent] = useState(false);
 
   useEffect(() => {
-    if (events.length > 0 && selectedEventId === null) {
-      setSelectedEventId(events[0].id);
+    if (events.length > 0) {
+      if (!selectedEventId || !events.some((e) => e.id === selectedEventId)) {
+        setSelectedEventId(events[0].id);
+      }
+    } else {
+      setSelectedEventId(null);
     }
   }, [events]);
 
   useEffect(() => {
     if (selectedEventId) {
       api.getAttendanceRecords(selectedEventId).then(setEventRecords).catch(console.error);
+    } else {
+      setEventRecords([]);
     }
   }, [selectedEventId]);
 
@@ -53,29 +66,65 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
   const selectedEvent = events.find((e) => e.id === selectedEventId);
 
-  const toggleCheckIn = async (memberId: number) => {
-    if (!selectedEventId) return;
-    setIsUpdatingCheckIn(true);
-    const existing = eventRecords.find((r) => r.member_id === memberId);
+  const handleCreateQuickSundayService = async () => {
+    setIsCreatingQuickEvent(true);
     try {
-      if (existing) {
-        await api.checkInMember(selectedEventId, memberId, existing.status === 'Present' ? 'Absent' : 'Present');
+      const today = new Date();
+      const startsAt = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 30).toISOString();
+      const endsAt = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 30).toISOString();
+
+      const created = await api.createEvent({
+        title: 'Sunday Morning Worship & Communion',
+        event_type: 'Worship Service',
+        location: 'Main Sanctuary',
+        starts_at: startsAt,
+        ends_at: endsAt,
+        headcount_adults: 0,
+        headcount_children: 0,
+        headcount_online: 0,
+      });
+
+      if (onRefreshEvents) onRefreshEvents();
+      setSelectedEventId(created.id);
+    } catch (err: any) {
+      alert(err.message || 'Failed to create event');
+    } finally {
+      setIsCreatingQuickEvent(false);
+    }
+  };
+
+  const toggleCheckIn = async (memberId: number) => {
+    let targetEventId = selectedEventId;
+
+    if (!targetEventId) {
+      if (events.length > 0) {
+        targetEventId = events[0].id;
+        setSelectedEventId(targetEventId);
       } else {
-        await api.checkInMember(selectedEventId, memberId, 'Present');
+        alert('Please create or select an event/service before marking attendance.');
+        return;
       }
-      const updated = await api.getAttendanceRecords(selectedEventId);
+    }
+
+    setUpdatingMemberId(memberId);
+    const existing = eventRecords.find((r) => r.member_id === memberId);
+    const nextStatus = existing && (existing.status === 'Present' || existing.status === 'Late') ? 'Absent' : 'Present';
+
+    try {
+      await api.checkInMember(targetEventId, memberId, nextStatus);
+      const updated = await api.getAttendanceRecords(targetEventId);
       setEventRecords(updated);
     } catch (err: any) {
       alert(err.message || 'Error updating attendance');
     } finally {
-      setIsUpdatingCheckIn(false);
+      setUpdatingMemberId(null);
     }
   };
 
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)' }}>
             Attendance & Service Check-in
@@ -84,10 +133,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             Headcount logging, roster check-ins, and automated 3-week pastoral absentee alerts
           </p>
         </div>
-        <button className="btn btn-primary" onClick={onOpenCheckInModal}>
-          <Plus size={16} />
-          <span>New Service / Event</span>
-        </button>
+        {hasPermission('manage_attendance') && (
+          <button className="btn btn-primary" onClick={onOpenCheckInModal}>
+            <Plus size={16} />
+            <span>New Service / Event</span>
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -105,49 +156,72 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       {/* TAB 1: CHECK-IN */}
       {activeTab === 'checkin' && (
         <div>
-          {/* Event Selector & Headcount Metrics */}
-          <div className="card" style={{ padding: '20px', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <div>
-                <label className="form-label">Select Church Gathering:</label>
-                <select
-                  className="form-select"
-                  style={{ width: '340px', fontWeight: '600' }}
-                  value={selectedEventId || ''}
-                  onChange={(e) => setSelectedEventId(Number(e.target.value))}
+          {events.length === 0 ? (
+            <div className="card" style={{ padding: '48px 24px', textAlign: 'center', marginBottom: '24px' }}>
+              <Calendar size={40} color="var(--gold-400)" style={{ margin: '0 auto 12px' }} />
+              <h3 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                No Church Gathering Scheduled
+              </h3>
+              <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', maxWidth: '460px', margin: '8px auto 20px' }}>
+                To take attendance, select or create a church worship service, prayer gathering, or event.
+              </p>
+              {hasPermission('manage_attendance') && (
+                <button
+                  className="btn btn-primary"
+                  onClick={handleCreateQuickSundayService}
+                  disabled={isCreatingQuickEvent}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
                 >
-                  {events.map((ev) => (
-                    <option key={ev.id} value={ev.id}>
-                      {ev.title} — {new Date(ev.starts_at).toLocaleDateString()}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedEvent && (
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Adults</div>
-                    <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--gold-400)' }}>{selectedEvent.headcount_adults}</div>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Children</div>
-                    <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--royal-blue)' }}>{selectedEvent.headcount_children}</div>
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Online Stream</div>
-                    <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--emerald)' }}>{selectedEvent.headcount_online ?? 0}</div>
-                  </div>
-                  <div style={{ textAlign: 'center', paddingLeft: '16px', borderLeft: '1px solid var(--border-subtle)' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Attendance</div>
-                    <div style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                      {selectedEvent.total_headcount ?? (selectedEvent.headcount_adults + selectedEvent.headcount_children + (selectedEvent.headcount_online || 0))}
-                    </div>
-                  </div>
-                </div>
+                  <CalendarPlus size={16} />
+                  <span>{isCreatingQuickEvent ? 'Creating Service...' : 'Create Today’s Sunday Worship Service'}</span>
+                </button>
               )}
             </div>
-          </div>
+          ) : (
+            /* Event Selector & Headcount Metrics */
+            <div className="card" style={{ padding: '20px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <label className="form-label">Select Church Gathering:</label>
+                  <select
+                    className="form-select"
+                    style={{ width: '340px', fontWeight: '600' }}
+                    value={selectedEventId || ''}
+                    onChange={(e) => setSelectedEventId(Number(e.target.value))}
+                  >
+                    {events.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.title} — {new Date(ev.starts_at).toLocaleDateString()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedEvent && (
+                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Adults</div>
+                      <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--gold-400)' }}>{selectedEvent.headcount_adults}</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Children</div>
+                      <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--royal-blue)' }}>{selectedEvent.headcount_children}</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Online Stream</div>
+                      <div style={{ fontSize: '20px', fontWeight: '800', color: 'var(--emerald)' }}>{selectedEvent.headcount_online ?? 0}</div>
+                    </div>
+                    <div style={{ textAlign: 'center', paddingLeft: '16px', borderLeft: '1px solid var(--border-subtle)' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Attendance</div>
+                      <div style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                        {selectedEvent.total_headcount ?? (selectedEvent.headcount_adults + selectedEvent.headcount_children + (selectedEvent.headcount_online || 0))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Member Attendance Roster Table */}
           <div className="card">
@@ -175,6 +249,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                   {members.map((m) => {
                     const record = eventRecords.find((r) => r.member_id === m.id);
                     const isPresent = record && (record.status === 'Present' || record.status === 'Late');
+                    const isCurrentlyUpdating = updatingMemberId === m.id;
 
                     return (
                       <tr key={m.id}>
@@ -201,14 +276,20 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                           </span>
                         </td>
                         <td style={{ textAlign: 'right' }}>
-                          <button
-                            className={`btn btn-sm ${isPresent ? 'btn-emerald' : 'btn-secondary'}`}
-                            onClick={() => toggleCheckIn(m.id)}
-                            disabled={isUpdatingCheckIn}
-                          >
-                            <CheckCircle size={14} />
-                            <span>{isPresent ? 'Checked In' : 'Mark Present'}</span>
-                          </button>
+                          {hasPermission('manage_attendance') ? (
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${isPresent ? 'btn-emerald' : 'btn-secondary'}`}
+                              onClick={() => toggleCheckIn(m.id)}
+                              disabled={isCurrentlyUpdating}
+                              style={{ minWidth: '110px' }}
+                            >
+                              {isPresent ? <Check size={14} /> : <CheckCircle size={14} />}
+                              <span>{isCurrentlyUpdating ? 'Saving...' : isPresent ? 'Checked In' : 'Mark Present'}</span>
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Read Only</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -278,3 +359,4 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     </div>
   );
 };
+

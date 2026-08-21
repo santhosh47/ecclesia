@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { UsersRound, Plus, MapPin, Clock, User, ShieldCheck } from 'lucide-react';
+import { UsersRound, Plus, MapPin, Clock, User, ShieldCheck, Edit2, Trash2, X, Save } from 'lucide-react';
+import { api } from '../api/client';
+import { useLocalization } from '../context/LocalizationContext';
 import { Member, Ministry } from '../types';
 
 interface MinistriesViewProps {
@@ -17,7 +19,10 @@ export const MinistriesView: React.FC<MinistriesViewProps> = ({
   onAddMinistry,
   onSelectMember,
 }) => {
+  const { hasPermission } = useLocalization();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingMinistry, setEditingMinistry] = useState<Ministry | null>(null);
+
   const [newMinistry, setNewMinistry] = useState({
     name: '',
     category: 'Ministry',
@@ -27,7 +32,16 @@ export const MinistriesView: React.FC<MinistriesViewProps> = ({
     leader_id: undefined as number | undefined,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    category: 'Ministry',
+    description: '',
+    meeting_time: '',
+    meeting_location: '',
+    leader_id: undefined as number | undefined,
+  });
+
+  const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMinistry.name.trim()) return;
     onAddMinistry(newMinistry);
@@ -35,9 +49,31 @@ export const MinistriesView: React.FC<MinistriesViewProps> = ({
     setShowAddModal(false);
   };
 
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMinistry || !editFormData.name.trim()) return;
+    try {
+      await api.updateMinistry(editingMinistry.id, editFormData);
+      setEditingMinistry(null);
+      window.location.reload(); // Quick refresh or parent reload
+    } catch (err: any) {
+      alert(err.message || 'Failed to update ministry');
+    }
+  };
+
+  const handleDelete = async (ministry: Ministry) => {
+    if (!confirm(`Delete ministry "${ministry.name}"?`)) return;
+    try {
+      await api.deleteMinistry(ministry.id);
+      window.location.reload();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete ministry');
+    }
+  };
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)' }}>
             Ministries & Small Groups
@@ -46,10 +82,12 @@ export const MinistriesView: React.FC<MinistriesViewProps> = ({
             Coordinate volunteer teams, departments, small group fellowships, and ministry rosters
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-          <Plus size={16} />
-          <span>New Ministry / Group</span>
-        </button>
+        {hasPermission('edit_members') && (
+          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+            <Plus size={16} />
+            <span>New Ministry / Group</span>
+          </button>
+        )}
       </div>
 
       {isLoading ? (
@@ -65,7 +103,37 @@ export const MinistriesView: React.FC<MinistriesViewProps> = ({
             <div key={m.id} className="card card-hover" style={{ padding: '22px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <span className="status-pill status-regular">{m.category}</span>
-                <span className="nav-badge badge-gold">{m.member_count} members</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span className="nav-badge badge-gold">{m.member_count} members</span>
+                  {hasPermission('edit_members') && (
+                    <>
+                      <button
+                        className="btn btn-icon btn-secondary btn-sm"
+                        onClick={() => {
+                          setEditingMinistry(m);
+                          setEditFormData({
+                            name: m.name,
+                            category: m.category,
+                            description: m.description || '',
+                            meeting_time: m.meeting_time || '',
+                            meeting_location: m.meeting_location || '',
+                            leader_id: m.leader_id || undefined,
+                          });
+                        }}
+                        title="Edit Ministry"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        className="btn btn-icon btn-danger btn-sm"
+                        onClick={() => handleDelete(m)}
+                        title="Delete Ministry"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               <h3 style={{ fontSize: '17px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '6px' }}>
@@ -103,7 +171,7 @@ export const MinistriesView: React.FC<MinistriesViewProps> = ({
         </div>
       )}
 
-      {/* Add Ministry Modal */}
+      {/* Modal: Add Ministry */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
@@ -113,7 +181,7 @@ export const MinistriesView: React.FC<MinistriesViewProps> = ({
                 &times;
               </button>
             </div>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleAddSubmit}>
               <div className="modal-content">
                 <div className="form-grid">
                   <div className="form-group-full">
@@ -189,6 +257,99 @@ export const MinistriesView: React.FC<MinistriesViewProps> = ({
                 </button>
                 <button type="submit" className="btn btn-primary">
                   Create Ministry
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Ministry */}
+      {editingMinistry && (
+        <div className="modal-overlay" onClick={() => setEditingMinistry(null)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Edit2 size={18} color="var(--gold-400)" />
+                <h3 className="modal-title">Edit Ministry: {editingMinistry.name}</h3>
+              </div>
+              <button className="btn btn-icon btn-secondary" onClick={() => setEditingMinistry(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            <form onSubmit={handleEditSubmit}>
+              <div className="modal-content">
+                <div className="form-grid">
+                  <div className="form-group-full">
+                    <label className="form-label">Ministry / Group Name *</label>
+                    <input
+                      className="form-input"
+                      required
+                      value={editFormData.name}
+                      onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Category</label>
+                    <select
+                      className="form-select"
+                      value={editFormData.category}
+                      onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+                    >
+                      <option value="Ministry">Ministry</option>
+                      <option value="Small Group">Small Group / Bible Study</option>
+                      <option value="Department">Department</option>
+                      <option value="Committee">Committee</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Appointed Leader</label>
+                    <select
+                      className="form-select"
+                      value={editFormData.leader_id || ''}
+                      onChange={(e) => setEditFormData({ ...editFormData, leader_id: e.target.value ? Number(e.target.value) : undefined })}
+                    >
+                      <option value="">-- Select Member Leader --</option>
+                      {members.map((mem) => (
+                        <option key={mem.id} value={mem.id}>
+                          {mem.first_name} {mem.last_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Regular Meeting Time</label>
+                    <input
+                      className="form-input"
+                      value={editFormData.meeting_time}
+                      onChange={(e) => setEditFormData({ ...editFormData, meeting_time: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Meeting Location</label>
+                    <input
+                      className="form-input"
+                      value={editFormData.meeting_location}
+                      onChange={(e) => setEditFormData({ ...editFormData, meeting_location: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group-full">
+                    <label className="form-label">Description & Mission</label>
+                    <textarea
+                      className="form-textarea"
+                      value={editFormData.description}
+                      onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingMinistry(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Save size={16} />
+                  <span>Save Changes</span>
                 </button>
               </div>
             </form>

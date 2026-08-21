@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Search, UserPlus, Filter, Phone, Mail, Home, Users, Trash2, Eye, ShieldCheck } from 'lucide-react';
+import { Search, UserPlus, Filter, Phone, Mail, Home, Users, Trash2, Eye, ShieldCheck, Edit2 } from 'lucide-react';
+import { useLocalization } from '../context/LocalizationContext';
 import { Member } from '../types';
 
 interface MembersViewProps {
@@ -7,6 +8,7 @@ interface MembersViewProps {
   isLoading: boolean;
   onSelectMember: (memberId: number) => void;
   onOpenAddMember: () => void;
+  onEditMember: (member: Member) => void;
   onDeleteMember: (memberId: number) => void;
 }
 
@@ -15,8 +17,10 @@ export const MembersView: React.FC<MembersViewProps> = ({
   isLoading,
   onSelectMember,
   onOpenAddMember,
+  onEditMember,
   onDeleteMember,
 }) => {
+  const { hasPermission } = useLocalization();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
@@ -74,10 +78,12 @@ export const MembersView: React.FC<MembersViewProps> = ({
             Manage congregation records, leadership roles (Elders, Deacons, Ministers, Preachers), households, and contact profiles
           </p>
         </div>
-        <button className="btn btn-primary" onClick={onOpenAddMember}>
-          <UserPlus size={16} />
-          <span>Add New Member</span>
-        </button>
+        {hasPermission('edit_members') && (
+          <button className="btn btn-primary" onClick={onOpenAddMember}>
+            <UserPlus size={16} />
+            <span>Add New Member</span>
+          </button>
+        )}
       </div>
 
       {/* Filter & Search Bar */}
@@ -98,18 +104,18 @@ export const MembersView: React.FC<MembersViewProps> = ({
             <label style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Role:</label>
             <select
               className="form-select"
-              style={{ width: 'auto', padding: '6px 12px', fontSize: '12.5px', minWidth: '130px' }}
               value={leadershipFilter}
               onChange={(e) => setLeadershipFilter(e.target.value)}
+              style={{ width: 'auto', padding: '6px 12px', fontSize: '13px' }}
             >
               <option value="ALL">All Roles</option>
-              <option value="LEADERS_ONLY">★ All Leaders</option>
-              <option value="Pastor">Pastors</option>
-              <option value="Elder">Elders</option>
-              <option value="Deacon">Deacons</option>
-              <option value="Minister">Ministers</option>
-              <option value="Preacher">Preachers</option>
-              <option value="Evangelist">Evangelists</option>
+              <option value="LEADERS_ONLY">★ Church Leaders Only</option>
+              <option value="Pastor">Pastor</option>
+              <option value="Elder">Elder</option>
+              <option value="Deacon">Deacon</option>
+              <option value="Minister">Minister</option>
+              <option value="Preacher">Preacher</option>
+              <option value="Evangelist">Evangelist</option>
               <option value="GENERAL_ONLY">General Members</option>
             </select>
           </div>
@@ -118,28 +124,27 @@ export const MembersView: React.FC<MembersViewProps> = ({
             <label style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Status:</label>
             <select
               className="form-select"
-              style={{ width: 'auto', padding: '6px 12px', fontSize: '12.5px' }}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ width: 'auto', padding: '6px 12px', fontSize: '13px' }}
             >
               <option value="ALL">All Statuses</option>
               <option value="Active">Active</option>
-              <option value="Regular Attendee">Regular Attendee</option>
-              <option value="Visitor">Visitor</option>
-              <option value="Clergy">Clergy / Staff</option>
               <option value="Inactive">Inactive</option>
+              <option value="Clergy">Clergy</option>
+              <option value="Probationary">Probationary</option>
             </select>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <label style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Group:</label>
+            <label style={{ fontSize: '12.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>Type:</label>
             <select
               className="form-select"
-              style={{ width: 'auto', padding: '6px 12px', fontSize: '12.5px' }}
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
+              style={{ width: 'auto', padding: '6px 12px', fontSize: '13px' }}
             >
-              <option value="ALL">All Groups</option>
+              <option value="ALL">All Categories</option>
               <option value="Adult">Adult</option>
               <option value="Youth">Youth</option>
               <option value="Child">Child</option>
@@ -149,7 +154,7 @@ export const MembersView: React.FC<MembersViewProps> = ({
         </div>
       </div>
 
-      {/* Members Table */}
+      {/* Member Table */}
       <div className="card">
         <div className="table-container">
           <table className="data-table">
@@ -168,7 +173,7 @@ export const MembersView: React.FC<MembersViewProps> = ({
               {isLoading ? (
                 <tr>
                   <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                    Loading member directory...
+                    Loading congregation records...
                   </td>
                 </tr>
               ) : filteredMembers.length === 0 ? (
@@ -179,7 +184,7 @@ export const MembersView: React.FC<MembersViewProps> = ({
                 </tr>
               ) : (
                 filteredMembers.map((m) => (
-                  <tr key={m.id} style={{ cursor: 'pointer' }} onClick={() => onSelectMember(m.id)}>
+                  <tr key={m.id} onClick={() => onSelectMember(m.id)} style={{ cursor: 'pointer' }}>
                     <td>
                       <div className="person-cell">
                         <div className="avatar">
@@ -190,12 +195,11 @@ export const MembersView: React.FC<MembersViewProps> = ({
                           )}
                         </div>
                         <div>
-                          <div className="person-name" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {m.title ? `${m.title} ` : ''}
-                            {m.first_name} {m.last_name}
+                          <div className="person-name">
+                            {m.title ? `${m.title} ` : ''}{m.first_name} {m.last_name}
                           </div>
-                          <div className="person-meta" style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                            {m.occupation || 'Member'}
+                          <div className="person-meta">
+                            {m.gender} • {m.marital_status} • {m.occupation || 'Member'}
                           </div>
                         </div>
                       </div>
@@ -242,17 +246,28 @@ export const MembersView: React.FC<MembersViewProps> = ({
                         >
                           <Eye size={14} />
                         </button>
-                        <button
-                          className="btn btn-icon btn-danger btn-sm"
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to delete ${m.first_name} ${m.last_name}?`)) {
-                              onDeleteMember(m.id);
-                            }
-                          }}
-                          title="Delete Member"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {hasPermission('edit_members') && (
+                          <>
+                            <button
+                              className="btn btn-icon btn-secondary btn-sm"
+                              onClick={() => onEditMember(m)}
+                              title="Edit Member Profile"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              className="btn btn-icon btn-danger btn-sm"
+                              onClick={() => {
+                                if (confirm(`Are you sure you want to delete ${m.first_name} ${m.last_name}?`)) {
+                                  onDeleteMember(m.id);
+                                }
+                              }}
+                              title="Delete Member"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

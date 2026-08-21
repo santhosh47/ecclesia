@@ -13,10 +13,12 @@ import {
   Shield,
   Trash2,
   UserCheck,
+  Users,
   X,
 } from 'lucide-react';
 import { useLocalization } from '../context/LocalizationContext';
 import { ChurchProfile, RoleDefinition } from '../types';
+import { UserManagementView } from './UserManagementView';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -33,7 +35,7 @@ export const SettingsView: React.FC = () => {
     toggleMode,
   } = useLocalization();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'modules' | 'rbac' | 'localization'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'users' | 'modules' | 'rbac' | 'localization'>('profile');
   const [profileForm, setProfileForm] = useState<ChurchProfile>(churchProfile);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -101,10 +103,10 @@ export const SettingsView: React.FC = () => {
     } else {
       setEditingRole(null);
       setRoleForm({
-        id: `custom_${Date.now()}`,
+        id: '',
         name: '',
         description: '',
-        permissions: ['view_members', 'manage_attendance', 'manage_calendar'],
+        permissions: ['view_members'],
       });
     }
     setShowRoleModal(true);
@@ -113,20 +115,47 @@ export const SettingsView: React.FC = () => {
   const handleSaveRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roleForm.name) return;
-    await saveRole(roleForm);
-    setShowRoleModal(false);
-    setSaveSuccess(`Role '${roleForm.name}' saved successfully!`);
-    setTimeout(() => setSaveSuccess(null), 3500);
+    try {
+      await saveRole({
+        id: editingRole ? editingRole.id : roleForm.name.toLowerCase().replace(/\s+/g, '_'),
+        name: roleForm.name,
+        description: roleForm.description,
+        permissions: roleForm.permissions,
+      });
+      setShowRoleModal(false);
+      setSaveSuccess(`Role "${roleForm.name}" updated successfully!`);
+      setTimeout(() => setSaveSuccess(null), 3500);
+    } catch (err: any) {
+      alert(err.message || 'Failed to save role');
+    }
   };
 
-  const moduleDefinitions = [
-    { key: 'double_entry_ledger', label: 'Double-Entry Ledger & Bookkeeping', desc: 'General journal ledger, balanced debit/credit entries, chart of accounts, and trial balance reports.' },
-    { key: 'payroll_staff_ledger', label: 'Clergy & Staff Payroll Engine', desc: 'Monthly payslip calculation, allowances, statutory deductions, and ledger disbursement records.' },
-    { key: 'giving_and_pledges', label: 'Giving, Tithes & Pledge Campaigns', desc: 'Online and offline donation recording, pledge progress gauges, and annual donor tax statements.' },
-    { key: 'church_activities_calendar', label: 'Church Activities & Events Calendar', desc: 'Schedule worship services, weekly prayer meetings, choir rehearsals, committee gatherings, and conferences.' },
-    { key: 'pdf_certificates', label: 'Milestone Life Certificates & PDF Generator', desc: 'Baptism, Wedding, Child Dedication, and Confirmation certificates with ornate borders and registration details.' },
-    { key: 'mass_messaging', label: 'Mass Messaging & WhatsApp Broadcasts', desc: 'TRAI DLT compliant SMS templates and broadcast dispatch to congregation and ministry groups.' },
-    { key: 'tax_compliance', label: 'Tax Compliance (80G / 501(c)(3) / FCRA)', desc: 'Section 80G tax exemption receipts, Form 10BD electronic return exports, and foreign remittance register.' },
+  const handleDeleteRole = async (roleId: string) => {
+    if (!confirm('Are you sure you want to delete this custom role?')) return;
+    try {
+      await deleteRole(roleId);
+      setSaveSuccess('Role deleted successfully.');
+      setTimeout(() => setSaveSuccess(null), 3500);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete role');
+    }
+  };
+
+  const togglePermission = (permKey: string) => {
+    setRoleForm((prev) => {
+      const exists = prev.permissions.includes(permKey);
+      return {
+        ...prev,
+        permissions: exists ? prev.permissions.filter((p) => p !== permKey) : [...prev.permissions, permKey],
+      };
+    });
+  };
+
+  const moduleList = [
+    { key: 'double_entry_ledger', label: 'Double-Entry Accounting & Trial Balance', desc: 'Compliant church ledger, journal entries, balance sheet, and income statement.' },
+    { key: 'tax_compliance_80g', label: '80G & 501(c)(3) Tax Compliance', desc: 'Generate signed donor tax receipts and export annual Form 10BD / IRS schedules.' },
+    { key: 'payroll_compensation', label: 'Clergy & Staff Payroll Calculator', desc: 'Calculate pastoral stipends, PF/TDS deductions, housing allowances, and generate payslips.' },
+    { key: 'milestone_certificates', label: 'Life Milestone PDF Certificates', desc: 'Generate high-resolution printable certificates for Baptisms, Weddings, Dedications, and Confirmations.' },
     { key: 'attendance_checkin', label: 'Attendance Roster & Absentee Alerts', desc: 'Live headcount check-in and 3-week consecutive absence alerts for proactive pastoral care.' },
     { key: 'ministries_groups', label: 'Ministries & Department Rosters', desc: 'Organize worship team, youth fellowship, Sunday school, and committee memberships.' },
     { key: 'pastoral_care', label: 'Pastoral Care Notes & Prayer Board', desc: 'Confidential visitation logs, pastoral counseling records, and answered prayer tracking.' },
@@ -143,46 +172,8 @@ export const SettingsView: React.FC = () => {
             <span>Administration & System Customization</span>
           </h1>
           <p className="view-subtitle">
-            Configure church profile, legal registration details, fine-grained feature modules, and role-based access control.
+            Configure church profile, user accounts & logins, feature modules, and role-based permissions.
           </p>
-        </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid var(--border-subtle)',
-              padding: '6px 14px',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '13px',
-              color: 'var(--text-secondary)',
-            }}
-          >
-            <UserCheck size={16} color="var(--gold-400)" />
-            <span style={{ fontWeight: 600 }}>Active Role Tester:</span>
-            <select
-              value={currentRole}
-              onChange={(e) => setCurrentRole(e.target.value)}
-              className="form-select"
-              style={{
-                width: 'auto',
-                padding: '4px 8px',
-                fontSize: '12.5px',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                background: 'transparent',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
       </div>
 
@@ -236,6 +227,27 @@ export const SettingsView: React.FC = () => {
           <Building size={16} />
           <span>Church Profile & Branding</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('users')}
+          className="btn"
+          style={{
+            background: activeTab === 'users' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'users' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'users' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <Users size={16} />
+          <span>Staff & User Logins</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('modules')}
           className="btn"
@@ -294,6 +306,9 @@ export const SettingsView: React.FC = () => {
           <span>Localization & Tax Regime</span>
         </button>
       </div>
+
+      {/* Tab: User Accounts & Logins */}
+      {activeTab === 'users' && <UserManagementView />}
 
       {/* Tab 1: Church Profile & Legal Branding */}
       {activeTab === 'profile' && (
@@ -575,7 +590,7 @@ export const SettingsView: React.FC = () => {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
-            {moduleDefinitions.map((mod) => {
+            {moduleList.map((mod) => {
               const isEnabled = modules[mod.key] ?? true;
               return (
                 <div

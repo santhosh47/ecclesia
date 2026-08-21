@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.attendance import router as attendance_router
+from app.api.v1.auth import router as auth_router
 from app.api.v1.certificates import router as certificates_router
 from app.api.v1.church_calendar import router as church_calendar_router
 from app.api.v1.compliance import router as compliance_router
@@ -19,11 +20,14 @@ from app.api.v1.messaging import router as messaging_router
 from app.api.v1.ministries import router as ministries_router
 from app.api.v1.pastoral import router as pastoral_router
 from app.api.v1.seed import router as seed_router
+from app.api.v1.users import router as users_router
 
 api_router = APIRouter()
 
-# System & Health
+# System, Auth & Health
 api_router.include_router(health_router)
+api_router.include_router(auth_router)
+api_router.include_router(users_router)
 api_router.include_router(seed_router)
 api_router.include_router(localization_router)
 

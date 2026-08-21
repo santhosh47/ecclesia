@@ -9,6 +9,7 @@ import { FinancesView } from './components/FinancesView';
 import { HouseholdsView } from './components/HouseholdsView';
 import { ImportantDatesView } from './components/ImportantDatesView';
 import { LedgerView } from './components/LedgerView';
+import { LoginView } from './components/LoginView';
 import { MassMessagingView } from './components/MassMessagingView';
 import { MemberDetailModal } from './components/MemberDetailModal';
 import { MembersView } from './components/MembersView';
@@ -18,13 +19,16 @@ import { AddPrayerModal } from './components/Modals/AddPrayerModal';
 import { CheckInModal } from './components/Modals/CheckInModal';
 import { CsvMigrationModal } from './components/Modals/CsvMigrationModal';
 import { DonorStatementModal } from './components/Modals/DonorStatementModal';
+import { EditHouseholdModal } from './components/Modals/EditHouseholdModal';
+import { EditMemberModal } from './components/Modals/EditMemberModal';
 import { RecordExpenseModal } from './components/Modals/RecordExpenseModal';
 import { RecordGivingModal } from './components/Modals/RecordGivingModal';
 import { Navbar } from './components/Navbar';
 import { PastoralCareView } from './components/PastoralCareView';
 import { SettingsView } from './components/SettingsView';
 import { NavSection, Sidebar } from './components/Sidebar';
-import { LocalizationProvider } from './context/LocalizationContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LocalizationProvider, useLocalization } from './context/LocalizationContext';
 import {
   Contribution,
   DashboardData,
@@ -33,11 +37,15 @@ import {
   FinanceSummary,
   Household,
   Member,
+  MemberDetail,
   Ministry,
   PledgeCampaign,
 } from './types';
 
 function AppContent() {
+  const { user, activeRole } = useAuth();
+  const { setCurrentRole } = useLocalization();
+
   const [activeSection, setActiveSection] = useState<NavSection>('dashboard');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,8 +67,10 @@ function AppContent() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Modals
+  // Modals & Editing states
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
+  const [editingMember, setEditingMember] = useState<Member | MemberDetail | null>(null);
+  const [editingHousehold, setEditingHousehold] = useState<Household | null>(null);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [showRecordGivingModal, setShowRecordGivingModal] = useState(false);
   const [showRecordExpenseModal, setShowRecordExpenseModal] = useState(false);
@@ -68,6 +78,13 @@ function AppContent() {
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showCsvMigrationModal, setShowCsvMigrationModal] = useState(false);
   const [statementMemberId, setStatementMemberId] = useState<number | null>(null);
+
+  // Sync role whenever activeRole changes
+  useEffect(() => {
+    if (activeRole) {
+      setCurrentRole(activeRole);
+    }
+  }, [activeRole, setCurrentRole]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -106,8 +123,15 @@ function AppContent() {
   };
 
   useEffect(() => {
-    loadAllData();
-  }, []);
+    if (user) {
+      loadAllData();
+    }
+  }, [user]);
+
+  // If user is not authenticated, show the Login Screen
+  if (!user) {
+    return <LoginView />;
+  }
 
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
@@ -140,11 +164,23 @@ function AppContent() {
     }
   };
 
+  const handleEditMember = async (updatedData: Partial<Member>) => {
+    if (!editingMember) return;
+    try {
+      await api.updateMember(editingMember.id, updatedData);
+      showToast(`Member profile updated successfully!`);
+      setEditingMember(null);
+      loadAllData();
+    } catch (err: any) {
+      alert(err.message || 'Error updating member');
+    }
+  };
+
   const handleDeleteMember = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this member record?')) return;
     try {
       await api.deleteMember(id);
-      showToast('Member deleted');
+      showToast('Member record deleted');
+      if (selectedMemberId === id) setSelectedMemberId(null);
       loadAllData();
     } catch (err: any) {
       alert(err.message || 'Error deleting member');
@@ -158,6 +194,28 @@ function AppContent() {
       loadAllData();
     } catch (err: any) {
       alert(err.message || 'Error creating household');
+    }
+  };
+
+  const handleEditHousehold = async (updatedData: Partial<Household>) => {
+    if (!editingHousehold) return;
+    try {
+      await api.updateHousehold(editingHousehold.id, updatedData);
+      showToast(`Household "${updatedData.name || editingHousehold.name}" updated!`);
+      setEditingHousehold(null);
+      loadAllData();
+    } catch (err: any) {
+      alert(err.message || 'Error updating household');
+    }
+  };
+
+  const handleDeleteHousehold = async (id: number) => {
+    try {
+      await api.deleteHousehold(id);
+      showToast('Household removed. Members set to independent.');
+      loadAllData();
+    } catch (err: any) {
+      alert(err.message || 'Error deleting household');
     }
   };
 
@@ -183,8 +241,8 @@ function AppContent() {
   };
 
   const handleDeleteContribution = async (id: number) => {
-    if (!window.confirm('Delete contribution entry?')) return;
     try {
+      await api.deleteContribution(id);
       showToast('Contribution removed');
       loadAllData();
     } catch (err: any) {
@@ -204,8 +262,8 @@ function AppContent() {
   };
 
   const handleDeleteExpense = async (id: number) => {
-    if (!window.confirm('Delete expense record?')) return;
     try {
+      await api.deleteExpense(id);
       showToast('Expense removed');
       loadAllData();
     } catch (err: any) {
@@ -315,6 +373,7 @@ function AppContent() {
               isLoading={isLoading}
               onSelectMember={(mId) => setSelectedMemberId(mId)}
               onOpenAddMember={() => setShowAddMemberModal(true)}
+              onEditMember={(m) => setEditingMember(m)}
               onDeleteMember={handleDeleteMember}
             />
           )}
@@ -329,6 +388,8 @@ function AppContent() {
               isLoading={isLoading}
               onSelectMember={(mId) => setSelectedMemberId(mId)}
               onAddHousehold={handleAddHousehold}
+              onEditHousehold={(h) => setEditingHousehold(h)}
+              onDeleteHousehold={handleDeleteHousehold}
             />
           )}
 
@@ -377,6 +438,7 @@ function AppContent() {
               isLoading={isLoading}
               onOpenCheckInModal={() => setShowCheckInModal(true)}
               onSelectMember={(mId) => setSelectedMemberId(mId)}
+              onRefreshEvents={loadAllData}
             />
           )}
 
@@ -400,6 +462,10 @@ function AppContent() {
             setStatementMemberId(mId);
           }}
           onRefreshList={loadAllData}
+          onOpenEditMember={(memberDetail) => {
+            setSelectedMemberId(null);
+            setEditingMember(memberDetail);
+          }}
         />
       )}
 
@@ -408,6 +474,23 @@ function AppContent() {
           households={households}
           onClose={() => setShowAddMemberModal(false)}
           onSubmit={handleAddMember}
+        />
+      )}
+
+      {editingMember !== null && (
+        <EditMemberModal
+          member={editingMember}
+          households={households}
+          onClose={() => setEditingMember(null)}
+          onSubmit={handleEditMember}
+        />
+      )}
+
+      {editingHousehold !== null && (
+        <EditHouseholdModal
+          household={editingHousehold}
+          onClose={() => setEditingHousehold(null)}
+          onSubmit={handleEditHousehold}
         />
       )}
 
@@ -464,8 +547,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <LocalizationProvider>
-      <AppContent />
-    </LocalizationProvider>
+    <AuthProvider>
+      <LocalizationProvider>
+        <AppContent />
+      </LocalizationProvider>
+    </AuthProvider>
   );
 }
