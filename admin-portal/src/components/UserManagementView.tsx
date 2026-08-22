@@ -18,8 +18,18 @@ import { api } from '../api/client';
 import { useLocalization } from '../context/LocalizationContext';
 import { User, UserCreatePayload } from '../types';
 
+const systemDefaultRoles: { id: string; name: string }[] = [
+  { id: 'super_admin', name: 'Super Administrator' },
+  { id: 'pastor', name: 'Pastor / Senior Clergy' },
+  { id: 'treasurer', name: 'Treasurer & Accountant' },
+  { id: 'elder', name: 'Elder / Council Member' },
+  { id: 'sub_admin', name: 'Sub-Administrator (Staff)' },
+  { id: 'ministry_leader', name: 'Ministry / Department Leader' },
+];
+
 export const UserManagementView: React.FC = () => {
   const { roles } = useLocalization();
+  const availableRoles = roles && roles.length > 0 ? roles : systemDefaultRoles;
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
@@ -350,7 +360,7 @@ export const UserManagementView: React.FC = () => {
                       value={newUser.role}
                       onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                     >
-                      {roles.map((r) => (
+                      {availableRoles.map((r) => (
                         <option key={r.id} value={r.id}>
                           {r.name}
                         </option>
@@ -417,7 +427,7 @@ export const UserManagementView: React.FC = () => {
                       value={editFormData.role}
                       onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
                     >
-                      {roles.map((r) => (
+                      {availableRoles.map((r) => (
                         <option key={r.id} value={r.id}>
                           {r.name}
                         </option>

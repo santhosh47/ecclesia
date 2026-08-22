@@ -176,12 +176,14 @@ def export_form_10bd(
 
 # --- FCRA Foreign Remittances Register ---
 @router.get("/fcra", response_model=list[FCRALogRead])
+@router.get("/fcra-logs", response_model=list[FCRALogRead])
 def list_fcra_logs(db: Session = Depends(get_db)) -> list[FCRALog]:
     """List FCRA foreign donation logs for Ministry of Home Affairs compliance."""
     return list(db.scalars(select(FCRALog).order_by(FCRALog.remittance_date.desc())).all())
 
 
 @router.post("/fcra", response_model=FCRALogRead, status_code=status.HTTP_201_CREATED)
+@router.post("/fcra-logs", response_model=FCRALogRead, status_code=status.HTTP_201_CREATED)
 def log_fcra_remittance(payload: FCRALogCreate, db: Session = Depends(get_db)) -> FCRALog:
     """Record an incoming FCRA foreign contribution."""
     log = FCRALog(
@@ -203,6 +205,7 @@ def log_fcra_remittance(payload: FCRALogCreate, db: Session = Depends(get_db)) -
 
 # --- UK Gift Aid Claims Report ---
 @router.get("/gift-aid-claims", response_model=UKGiftAidClaimReport)
+@router.get("/uk-gift-aid", response_model=UKGiftAidClaimReport)
 def get_gift_aid_claims(
     tax_year: str = "2025-2026",
     db: Session = Depends(get_db),

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, UserPlus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, UserPlus, Home, Plus, CheckCircle2 } from 'lucide-react';
 import { Household, Member } from '../../types';
+import { api } from '../../api/client';
 
 interface AddMemberModalProps {
   households: Household[];
@@ -9,6 +10,25 @@ interface AddMemberModalProps {
 }
 
 export const AddMemberModal: React.FC<AddMemberModalProps> = ({ households, onClose, onSubmit }) => {
+  const [localHouseholds, setLocalHouseholds] = useState<Household[]>(households);
+  const [showNewHouseholdForm, setShowNewHouseholdForm] = useState(false);
+  const [isCreatingHousehold, setIsCreatingHousehold] = useState(false);
+  const [householdCreatedNotice, setHouseholdCreatedNotice] = useState<string | null>(null);
+
+  // New household inline form state
+  const [newHousehold, setNewHousehold] = useState({
+    name: '',
+    address: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    home_phone: '',
+  });
+
+  useEffect(() => {
+    setLocalHouseholds(households);
+  }, [households]);
+
   const [formData, setFormData] = useState<Partial<Member>>({
     first_name: '',
     middle_name: '',
@@ -32,9 +52,70 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ households, onCl
     baptism_location: '',
     joined_date: new Date().toISOString().split('T')[0],
     household_id: undefined,
-    household_role: 'Member',
+    household_role: 'Head',
     notes: '',
   });
+
+  const handleHouseholdDropdownChange = (value: string) => {
+    if (value === '__NEW_HOUSEHOLD__') {
+      const suggestedName = formData.last_name ? `The ${formData.last_name} Family` : '';
+      setNewHousehold((prev) => ({
+        ...prev,
+        name: prev.name || suggestedName,
+        address: prev.address || formData.address || '',
+        city: prev.city || formData.city || '',
+        state: prev.state || formData.state || '',
+        postal_code: prev.postal_code || formData.postal_code || '',
+        home_phone: prev.home_phone || formData.phone || '',
+      }));
+      setShowNewHouseholdForm(true);
+    } else {
+      const hhId = value ? Number(value) : undefined;
+      setFormData({ ...formData, household_id: hhId });
+      setShowNewHouseholdForm(false);
+
+      if (hhId) {
+        const foundHh = localHouseholds.find((h) => h.id === hhId);
+        if (foundHh && !formData.address && foundHh.address) {
+          setFormData((prev) => ({
+            ...prev,
+            household_id: hhId,
+            address: prev.address || foundHh.address,
+            city: prev.city || foundHh.city,
+            state: prev.state || foundHh.state,
+            postal_code: prev.postal_code || foundHh.postal_code,
+          }));
+        }
+      }
+    }
+  };
+
+  const handleCreateQuickHousehold = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newHousehold.name.trim()) return;
+
+    setIsCreatingHousehold(true);
+    try {
+      const created = await api.createHousehold(newHousehold);
+      setLocalHouseholds((prev) => [...prev, created]);
+      setFormData((prev) => ({
+        ...prev,
+        household_id: created.id,
+        address: prev.address || created.address || undefined,
+        city: prev.city || created.city || undefined,
+        state: prev.state || created.state || undefined,
+        postal_code: prev.postal_code || created.postal_code || undefined,
+      }));
+      setShowNewHouseholdForm(false);
+      setHouseholdCreatedNotice(`✨ Created & Assigned: ${created.name}`);
+      setTimeout(() => setHouseholdCreatedNotice(null), 4000);
+      setNewHousehold({ name: '', address: '', city: '', state: '', postal_code: '', home_phone: '' });
+    } catch (err: any) {
+      alert(err.message || 'Failed to create new household');
+    } finally {
+      setIsCreatingHousehold(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,37 +332,209 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ households, onCl
                 </select>
               </div>
 
+              {/* Household Assignment with Inline Creation Option */}
               <div>
-                <label className="form-label">Assign Household / Family</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ margin: 0 }}>
+                    Assign Household / Family
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const suggestedName = formData.last_name ? `The ${formData.last_name} Family` : '';
+                      setNewHousehold((prev) => ({ ...prev, name: prev.name || suggestedName }));
+                      setShowNewHouseholdForm((prev) => !prev);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--gold-400)',
+                      fontSize: '11.5px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: 0,
+                    }}
+                  >
+                    <Plus size={13} />
+                    <span>{showNewHouseholdForm ? 'Close New' : '+ New Household'}</span>
+                  </button>
+                </div>
+
                 <select
                   className="form-select"
                   value={formData.household_id || ''}
-                  onChange={(e) => setFormData({ ...formData, household_id: e.target.value ? Number(e.target.value) : undefined })}
+                  onChange={(e) => handleHouseholdDropdownChange(e.target.value)}
                 >
                   <option value="">None / Independent</option>
-                  {households.map((h) => (
+                  <option value="__NEW_HOUSEHOLD__">➕ + Add New Household...</option>
+                  {localHouseholds.map((h) => (
                     <option key={h.id} value={h.id}>
-                      {h.name}
+                      {h.name} {h.city ? `(${h.city})` : ''}
                     </option>
                   ))}
                 </select>
+
+                {householdCreatedNotice && (
+                  <div
+                    style={{
+                      fontSize: '11.5px',
+                      color: '#34d399',
+                      marginTop: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    <CheckCircle2 size={13} />
+                    <span>{householdCreatedNotice}</span>
+                  </div>
+                )}
               </div>
 
+              {/* Extended Household Roles */}
               <div>
-                <label className="form-label">Household Role</label>
+                <label className="form-label">Household Role / Relationship</label>
                 <select
                   className="form-select"
-                  value={formData.household_role || ''}
+                  value={formData.household_role || 'Head'}
                   onChange={(e) => setFormData({ ...formData, household_role: e.target.value })}
                 >
-                  <option value="Head of Household">Head of Household</option>
+                  <option value="Head">Head of Household</option>
                   <option value="Spouse">Spouse</option>
-                  <option value="Child">Child</option>
+                  <option value="Child">Child (Son / Daughter)</option>
+                  <option value="Parent">Parent (Father / Mother)</option>
+                  <option value="Parent-in-Law">Parent-in-Law (Father/Mother-in-Law)</option>
+                  <option value="Grandparent">Grandparent</option>
+                  <option value="Grandchild">Grandchild</option>
+                  <option value="Sibling">Sibling (Brother / Sister)</option>
+                  <option value="Extended Family">Extended Family / Relative</option>
                   <option value="Dependent">Dependent</option>
-                  <option value="Member">Member</option>
+                  <option value="Member">Family Member</option>
                 </select>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '3px' }}>
+                  Supports multi-generational families (e.g. living-in parents / in-laws)
+                </span>
               </div>
             </div>
+
+            {/* Inline Quick Add Household Panel */}
+            {showNewHouseholdForm && (
+              <div
+                style={{
+                  background: 'rgba(245, 158, 11, 0.06)',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '16px',
+                  marginBottom: '20px',
+                  animation: 'fadeIn 0.25s ease-out',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, fontSize: '13px', color: 'var(--gold-400)' }}>
+                    <Home size={16} />
+                    <span>Quick Register New Household Unit</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '11px' }}
+                    onClick={() => setShowNewHouseholdForm(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="form-grid" style={{ gap: '10px' }}>
+                  <div className="form-group-full">
+                    <label className="form-label" style={{ fontSize: '11.5px' }}>
+                      Household Family Name *
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ padding: '7px 10px', fontSize: '13px' }}
+                      placeholder="e.g. The Sterling Family"
+                      value={newHousehold.name}
+                      onChange={(e) => setNewHousehold({ ...newHousehold, name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontSize: '11.5px' }}>
+                      Street Address
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ padding: '7px 10px', fontSize: '13px' }}
+                      placeholder="e.g. 14 2nd Cross, Koramangala"
+                      value={newHousehold.address}
+                      onChange={(e) => setNewHousehold({ ...newHousehold, address: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontSize: '11.5px' }}>
+                      City / Area
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ padding: '7px 10px', fontSize: '13px' }}
+                      placeholder="e.g. Bangalore"
+                      value={newHousehold.city}
+                      onChange={(e) => setNewHousehold({ ...newHousehold, city: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontSize: '11.5px' }}>
+                      State / Region
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ padding: '7px 10px', fontSize: '13px' }}
+                      placeholder="e.g. KA"
+                      value={newHousehold.state}
+                      onChange={(e) => setNewHousehold({ ...newHousehold, state: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontSize: '11.5px' }}>
+                      Home Landline / Contact
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ padding: '7px 10px', fontSize: '13px' }}
+                      placeholder="e.g. +91 80 2553 0101"
+                      value={newHousehold.home_phone}
+                      onChange={(e) => setNewHousehold({ ...newHousehold, home_phone: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group-full" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={handleCreateQuickHousehold}
+                      disabled={isCreatingHousehold || !newHousehold.name.trim()}
+                      style={{ gap: '6px' }}
+                    >
+                      <Plus size={14} />
+                      <span>{isCreatingHousehold ? 'Creating Household...' : 'Save & Assign to Member'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <h4 style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--gold-400)', marginBottom: '14px' }}>
               3. Important Dates & Spiritual Milestones

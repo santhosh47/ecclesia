@@ -10,18 +10,34 @@ import {
   DollarSign,
   HeartHandshake,
   BookOpen,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLocalization } from '../context/LocalizationContext';
 
 export const LoginView: React.FC = () => {
   const { login, loginAsDemoRole } = useAuth();
-  const { churchProfile } = useLocalization();
+  const { churchProfile, modules } = useLocalization();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showTestUsers, setShowTestUsers] = useState<boolean>(() => {
+    const saved = localStorage.getItem('ecclesia_show_test_users');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  const toggleTestUsers = () => {
+    setShowTestUsers((prev) => {
+      const next = !prev;
+      localStorage.setItem('ecclesia_show_test_users', String(next));
+      return next;
+    });
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,93 +221,141 @@ export const LoginView: React.FC = () => {
           </div>
         </form>
 
-        {/* Quick Demo Logins Section */}
-        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '20px' }}>
-          <div
-            style={{
-              fontSize: '11px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              fontWeight: '700',
-              color: 'var(--gold-400)',
-              marginBottom: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <Sparkles size={13} />
-            <span>Quick Test Logins (Click to Test Any Role)</span>
+        {/* Quick Demo Logins Section with Toggle (Super Admin Feature Toggle Controlled) */}
+        {modules.quick_test_logins === true && (
+          <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '16px' }}>
+            <div
+              onClick={toggleTestUsers}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                userSelect: 'none',
+                padding: '6px 4px',
+                borderRadius: 'var(--radius-sm)',
+                transition: 'all 0.2s ease',
+              }}
+              title={showTestUsers ? 'Hide Test Role Logins' : 'Show Test Role Logins'}
+            >
+              <div
+                style={{
+                  fontSize: '11.5px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  fontWeight: '700',
+                  color: 'var(--gold-400)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <Sparkles size={13} />
+                <span>Quick Test Logins</span>
+                <span
+                  style={{
+                    fontSize: '10px',
+                    background: showTestUsers ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                    color: showTestUsers ? 'var(--gold-400)' : 'var(--text-muted)',
+                    padding: '1px 6px',
+                    borderRadius: '4px',
+                    fontWeight: 600,
+                    marginLeft: '4px',
+                  }}
+                >
+                  {showTestUsers ? '6 Roles' : 'Hidden (Click to expand)'}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-icon btn-secondary btn-sm"
+                style={{ width: '26px', height: '26px', padding: 0, borderRadius: '4px' }}
+                aria-label={showTestUsers ? 'Hide Test Logins' : 'Show Test Logins'}
+              >
+                {showTestUsers ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+            </div>
+
+            {showTestUsers && (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                  gap: '8px',
+                  marginTop: '12px',
+                  animation: 'fadeIn 0.25s ease-out',
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleQuickLogin('admin')}
+                  disabled={isLoading}
+                  style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
+                >
+                  <ShieldCheck size={14} color="var(--gold-400)" />
+                  <span>Super Admin</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleQuickLogin('pastor')}
+                  disabled={isLoading}
+                  style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
+                >
+                  <HeartHandshake size={14} color="#38bdf8" />
+                  <span>Pastor / Clergy</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleQuickLogin('treasurer')}
+                  disabled={isLoading}
+                  style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
+                >
+                  <DollarSign size={14} color="var(--emerald)" />
+                  <span>Treasurer</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleQuickLogin('elder')}
+                  disabled={isLoading}
+                  style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
+                >
+                  <BookOpen size={14} color="#a855f7" />
+                  <span>Elder / Council</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleQuickLogin('staff')}
+                  disabled={isLoading}
+                  style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
+                >
+                  <Users size={14} color="#fb7185" />
+                  <span>Sub-Admin</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleQuickLogin('leader')}
+                  disabled={isLoading}
+                  style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
+                >
+                  <Users size={14} color="#f97316" />
+                  <span>Ministry Leader</span>
+                </button>
+              </div>
+            )}
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickLogin('admin')}
-              disabled={isLoading}
-              style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
-            >
-              <ShieldCheck size={14} color="var(--gold-400)" />
-              <span>Super Admin</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickLogin('pastor')}
-              disabled={isLoading}
-              style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
-            >
-              <HeartHandshake size={14} color="#38bdf8" />
-              <span>Pastor / Clergy</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickLogin('treasurer')}
-              disabled={isLoading}
-              style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
-            >
-              <DollarSign size={14} color="var(--emerald)" />
-              <span>Treasurer</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickLogin('elder')}
-              disabled={isLoading}
-              style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
-            >
-              <BookOpen size={14} color="#a855f7" />
-              <span>Elder / Council</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickLogin('staff')}
-              disabled={isLoading}
-              style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
-            >
-              <Users size={14} color="#fb7185" />
-              <span>Sub-Admin</span>
-            </button>
-
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => handleQuickLogin('leader')}
-              disabled={isLoading}
-              style={{ justifyContent: 'flex-start', fontSize: '12px', padding: '8px 10px' }}
-            >
-              <Users size={14} color="#f97316" />
-              <span>Ministry Leader</span>
-            </button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -253,7 +253,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           )}
 
-          {modules.tax_compliance !== false && hasPermission('tax_compliance') && (
+          {/* Tax Compliance: Visible in DEV mode or when explicitly enabled in dev preview */}
+          {import.meta.env.DEV && modules.tax_compliance !== false && hasPermission('tax_compliance') && (
             <button
               className={`nav-item ${activeSection === 'compliance' ? 'active' : ''}`}
               onClick={() => handleSelect('compliance')}
@@ -262,6 +263,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <ShieldCheck size={18} />
                 <span>{isIndia ? '80G & FCRA Tax' : '501(c)(3) & Gift Aid'}</span>
               </div>
+              <span className="nav-badge badge-amber" style={{ fontSize: '9px', padding: '1px 5px' }}>DEV</span>
             </button>
           )}
 
@@ -292,16 +294,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           )}
 
-          <button
-            className="btn btn-secondary btn-sm"
-            style={{ width: '100%', gap: '8px' }}
-            onClick={onSeedDemoData}
-            disabled={isSeeding}
-            title="Reset and populate demo church data"
-          >
-            <Sparkles size={14} color="#f59e0b" />
-            <span>{isSeeding ? 'Seeding Data...' : 'Seed ChMS Data'}</span>
-          </button>
+          {modules.demo_data_seeding !== false && (
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ width: '100%', gap: '8px' }}
+              onClick={onSeedDemoData}
+              disabled={isSeeding}
+              title="Reset and populate demo church data"
+            >
+              <Sparkles size={14} color="#f59e0b" />
+              <span>{isSeeding ? 'Seeding Data...' : 'Seed ChMS Data'}</span>
+            </button>
+          )}
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '6px' }}>
             {churchProfile.name} • {isIndia ? '🇮🇳 India' : '🌐 Global'}
           </div>

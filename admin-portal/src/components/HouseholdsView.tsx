@@ -31,6 +31,21 @@ export const HouseholdsView: React.FC<HouseholdsViewProps> = ({
     home_phone: '',
   });
 
+  const getHouseholdRoleBadge = (role?: string | null) => {
+    if (!role) return { className: 'badge-neutral', label: 'Member' };
+    const r = role.toLowerCase();
+    if (r.includes('head')) return { className: 'status-clergy', label: 'Head of Family' };
+    if (r.includes('spouse') || r.includes('wife') || r.includes('husband')) return { className: 'badge-purple', label: 'Spouse' };
+    if (r.includes('parent-in-law') || r.includes('in-law')) return { className: 'badge-blue', label: role };
+    if (r.includes('parent') || r.includes('father') || r.includes('mother')) return { className: 'badge-emerald', label: role.includes('Parent') ? 'Parent (Living-in)' : role };
+    if (r.includes('grandparent') || r.includes('grandfather') || r.includes('grandmother')) return { className: 'badge-rose', label: role };
+    if (r.includes('child') || r.includes('son') || r.includes('daughter')) return { className: 'status-visitor', label: role };
+    if (r.includes('grandchild')) return { className: 'status-visitor', label: 'Grandchild' };
+    if (r.includes('sibling') || r.includes('brother') || r.includes('sister')) return { className: 'badge-purple', label: role };
+    if (r.includes('dependent')) return { className: 'status-regular', label: 'Dependent' };
+    return { className: 'badge-neutral', label: role };
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newHousehold.name.trim()) return;
@@ -167,9 +182,14 @@ export const HouseholdsView: React.FC<HouseholdsViewProps> = ({
                           {m.first_name} {m.last_name}
                         </span>
                       </div>
-                      <span className="status-pill status-clergy" style={{ fontSize: '11px' }}>
-                        {m.household_role || 'Member'}
-                      </span>
+                      {(() => {
+                        const badge = getHouseholdRoleBadge(m.household_role);
+                        return (
+                          <span className={`status-pill ${badge.className}`} style={{ fontSize: '11px' }}>
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>

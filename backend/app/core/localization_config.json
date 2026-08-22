@@ -31,11 +31,13 @@
     "church_activities_calendar": true,
     "pdf_certificates": true,
     "mass_messaging": true,
-    "tax_compliance": true,
+    "tax_compliance": false,
     "attendance_checkin": true,
     "ministries_groups": true,
     "pastoral_care": true,
-    "csv_migration": true
+    "csv_migration": true,
+    "demo_data_seeding": false,
+    "quick_test_logins": false
   },
   "roles": [
     {

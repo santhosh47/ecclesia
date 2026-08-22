@@ -8,8 +8,20 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import get_settings
 
 
+from pathlib import Path
+
+
 def get_normalized_database_url(url: str) -> str:
-    """Normalize database connection strings for SQLAlchemy with psycopg3."""
+    """Normalize database connection strings for SQLAlchemy with psycopg3 or absolute SQLite."""
+    if url.startswith("sqlite:///./"):
+        backend_dir = Path(__file__).resolve().parent.parent.parent
+        db_filename = url[len("sqlite:///./") :]
+        db_path = backend_dir / db_filename
+        return f"sqlite:///{db_path.as_posix()}"
+    if url == "sqlite:///ecclesia.db":
+        backend_dir = Path(__file__).resolve().parent.parent.parent
+        db_path = backend_dir / "ecclesia.db"
+        return f"sqlite:///{db_path.as_posix()}"
     if url.startswith("postgres://"):
         return url.replace("postgres://", "postgresql+psycopg://", 1)
     if url.startswith("postgresql://") and not url.startswith("postgresql+"):

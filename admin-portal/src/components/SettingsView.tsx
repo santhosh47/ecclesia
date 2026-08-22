@@ -15,8 +15,11 @@ import {
   UserCheck,
   Users,
   X,
+  Server,
+  FileText,
+  AlertTriangle,
 } from 'lucide-react';
-import { useLocalization } from '../context/LocalizationContext';
+import { useLocalization, WORLD_CURRENCIES } from '../context/LocalizationContext';
 import { ChurchProfile, RoleDefinition } from '../types';
 import { UserManagementView } from './UserManagementView';
 
@@ -35,7 +38,7 @@ export const SettingsView: React.FC = () => {
     toggleMode,
   } = useLocalization();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'users' | 'modules' | 'rbac' | 'localization'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'users' | 'modules' | 'rbac' | 'localization' | 'security'>('profile');
   const [profileForm, setProfileForm] = useState<ChurchProfile>(churchProfile);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -153,13 +156,15 @@ export const SettingsView: React.FC = () => {
 
   const moduleList = [
     { key: 'double_entry_ledger', label: 'Double-Entry Accounting & Trial Balance', desc: 'Compliant church ledger, journal entries, balance sheet, and income statement.' },
-    { key: 'tax_compliance_80g', label: '80G & 501(c)(3) Tax Compliance', desc: 'Generate signed donor tax receipts and export annual Form 10BD / IRS schedules.' },
+    { key: 'tax_compliance', label: 'Tax Compliance (80G / 501c / Gift Aid)', desc: '[DEV PREVIEW] Generate donor tax receipts and annual statutory returns. Hidden in deployed app by default.', isDev: true },
     { key: 'payroll_compensation', label: 'Clergy & Staff Payroll Calculator', desc: 'Calculate pastoral stipends, PF/TDS deductions, housing allowances, and generate payslips.' },
     { key: 'milestone_certificates', label: 'Life Milestone PDF Certificates', desc: 'Generate high-resolution printable certificates for Baptisms, Weddings, Dedications, and Confirmations.' },
     { key: 'attendance_checkin', label: 'Attendance Roster & Absentee Alerts', desc: 'Live headcount check-in and 3-week consecutive absence alerts for proactive pastoral care.' },
     { key: 'ministries_groups', label: 'Ministries & Department Rosters', desc: 'Organize worship team, youth fellowship, Sunday school, and committee memberships.' },
     { key: 'pastoral_care', label: 'Pastoral Care Notes & Prayer Board', desc: 'Confidential visitation logs, pastoral counseling records, and answered prayer tracking.' },
     { key: 'csv_migration', label: 'CSV Migration Tool (ChurchCRM / Excel)', desc: 'Batch import and export of church membership rosters and family household groupings.' },
+    { key: 'demo_data_seeding', label: 'Demo Data Seeding & Reset Option', desc: 'Display the Seed ChMS Data button in the sidebar and administration tools for demo environments.' },
+    { key: 'quick_test_logins', label: 'Quick Test Logins on Sign-In Screen', desc: 'Allow 1-click test role logins on the sign-in page. Keep disabled for public downloads to prevent unauthorized logins.' },
   ];
 
   return (
@@ -304,6 +309,26 @@ export const SettingsView: React.FC = () => {
         >
           <Globe size={16} />
           <span>Localization & Tax Regime</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('security')}
+          className="btn"
+          style={{
+            background: activeTab === 'security' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'security' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'security' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <Lock size={16} />
+          <span>Security & Data Compliance</span>
         </button>
       </div>
 
@@ -553,6 +578,70 @@ export const SettingsView: React.FC = () => {
             </div>
           </div>
 
+          {/* Card 4: Worldwide Currency & Financial Locale */}
+          <div className="card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <DollarSign size={20} color="var(--gold-400)" />
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Worldwide Currency & Accounting Unit
+              </h3>
+            </div>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginBottom: '18px' }}>
+              Select your church's operating currency. All ledger entries, receipts, donations, and financial reports dynamically use this denomination worldwide.
+            </p>
+
+            <div className="form-grid">
+              <div>
+                <label className="form-label">Operating Currency (35+ World Currencies)</label>
+                <select
+                  className="form-select"
+                  value={mode === 'IN' ? profileForm.currency_in || 'INR' : profileForm.currency_global || 'USD'}
+                  onChange={(e) => {
+                    const selected = WORLD_CURRENCIES.find((c) => c.code === e.target.value);
+                    if (selected) {
+                      if (mode === 'IN') {
+                        setProfileForm({
+                          ...profileForm,
+                          currency_in: selected.code,
+                          currency_symbol_in: selected.symbol,
+                        });
+                      } else {
+                        setProfileForm({
+                          ...profileForm,
+                          currency_global: selected.code,
+                          currency_symbol_global: selected.symbol,
+                        });
+                      }
+                    }
+                  }}
+                >
+                  {WORLD_CURRENCIES.map((cur) => (
+                    <option key={cur.code} value={cur.code}>
+                      {cur.flag} {cur.code} ({cur.symbol}) — {cur.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Active Currency Symbol</label>
+                <input
+                  type="text"
+                  value={mode === 'IN' ? profileForm.currency_symbol_in || '₹' : profileForm.currency_symbol_global || '$'}
+                  onChange={(e) => {
+                    if (mode === 'IN') {
+                      setProfileForm({ ...profileForm, currency_symbol_in: e.target.value });
+                    } else {
+                      setProfileForm({ ...profileForm, currency_symbol_global: e.target.value });
+                    }
+                  }}
+                  className="form-input"
+                  placeholder="e.g. $, ₹, €, £, ₦"
+                />
+              </div>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
             <button
               type="submit"
@@ -607,9 +696,16 @@ export const SettingsView: React.FC = () => {
                 >
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
-                      <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '14.5px', lineHeight: 1.3 }}>
-                        {mod.label}
-                      </h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '14.5px', lineHeight: 1.3 }}>
+                          {mod.label}
+                        </h4>
+                        {mod.isDev && (
+                          <span className="status-pill badge-amber" style={{ fontSize: '10px', padding: '1px 6px' }}>
+                            DEV PREVIEW
+                          </span>
+                        )}
+                      </div>
                       <span className={`status-pill ${isEnabled ? 'badge-emerald' : 'badge-neutral'}`} style={{ whiteSpace: 'nowrap' }}>
                         {isEnabled ? 'ACTIVE' : 'DISABLED'}
                       </span>
@@ -774,16 +870,90 @@ export const SettingsView: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '24px' }}>🌐</span>
-                  <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '16px' }}>Global (US / UK / EU) Mode</h4>
+                  <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '16px' }}>Global (US / UK / EU / Worldwide) Mode</h4>
                 </div>
                 {mode === 'GLOBAL' && <span className="status-pill badge-emerald">ACTIVE</span>}
               </div>
               <ul style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', lineHeight: 1.8 }}>
                 <li>IRS 501(c)(3) Donor Contribution Receipts</li>
                 <li>UK HMRC Gift Aid 25% Tax Reclaim Schedule</li>
-                <li>Multi-Currency Ledger (USD $, GBP £, EUR €)</li>
+                <li>Worldwide Currencies (USD $, GBP £, EUR €, CAD, AUD, ZAR, NGN, KES, etc.)</li>
                 <li>Twilio A2P 10DLC Carrier Registered Routing</li>
-                <li>GDPR Compliant Privacy & Opt-Out Headers</li>
+                <li>GDPR & Data Protection Compliant Privacy Headers</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 5: Security & Data Compliance */}
+      {activeTab === 'security' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div
+            className="card"
+            style={{
+              padding: '16px 20px',
+              borderLeft: '4px solid var(--royal-blue)',
+              background: 'rgba(59, 130, 246, 0.03)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <Lock size={18} color="#60a5fa" />
+              <h4 style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '15px' }}>
+                Enterprise Security & Data Privacy Compliance
+              </h4>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Ecclesia ChMS implements defense-in-depth protection across user authentication, statutory data compliance (GDPR / DPDP), cryptographic password salting, and financial audit immutability.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
+            {/* Card 1: Authentication & Credentials */}
+            <div className="card" style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <Key size={18} color="var(--gold-400)" />
+                <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Password & Credential Security
+                </h4>
+              </div>
+              <ul style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', lineHeight: 1.8 }}>
+                <li><strong>PBKDF2 SHA-256:</strong> 100,000 hashing rounds with cryptographically random 128-bit salt per user.</li>
+                <li><strong>Timing Attack Protection:</strong> Constant-time digest comparison (`secrets.compare_digest`).</li>
+                <li><strong>Session Invalidation:</strong> Immediate Bearer token revoking on logout.</li>
+                <li><strong>Public Protection:</strong> Quick test logins are disabled by default for downloadable releases.</li>
+              </ul>
+            </div>
+
+            {/* Card 2: HTTP Security Headers */}
+            <div className="card" style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <Server size={18} color="#34d399" />
+                <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Transport & Header Hardening
+                </h4>
+              </div>
+              <ul style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', lineHeight: 1.8 }}>
+                <li><strong>X-Frame-Options: DENY:</strong> Prevents clickjacking and malicious iframe embedding.</li>
+                <li><strong>X-Content-Type-Options: nosniff:</strong> Protects against MIME-type sniffing vulnerabilities.</li>
+                <li><strong>Strict Referrer Policy:</strong> Keeps sensitive token URLs private.</li>
+                <li><strong>Origin-Restricted CORS:</strong> Backend API restricts cross-origin calls to authorized origins.</li>
+              </ul>
+            </div>
+
+            {/* Card 3: GDPR & Data Privacy */}
+            <div className="card" style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <Shield size={18} color="#818cf8" />
+                <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  GDPR & DPDP Data Protection
+                </h4>
+              </div>
+              <ul style={{ fontSize: '12.5px', color: 'var(--text-secondary)', paddingLeft: '18px', lineHeight: 1.8 }}>
+                <li><strong>Right to Data Portability:</strong> Full member directory and household records exportable via CSV.</li>
+                <li><strong>Right to Rectification:</strong> Real-time member demographic and marital data updates.</li>
+                <li><strong>Statutory Retention:</strong> Financial ledger records retained for 7 years to meet tax audit laws.</li>
+                <li><strong>Confidential Counseling:</strong> Pastoral counseling notes protected under role-based authorization.</li>
               </ul>
             </div>
           </div>
