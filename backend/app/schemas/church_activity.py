@@ -17,6 +17,8 @@ class ChurchActivityBase(BaseModel):
     is_recurring: bool = False
     recurrence_pattern: str | None = Field(default=None, max_length=150)
     contact_phone: str | None = Field(default=None, max_length=50)
+    track_attendance: bool = False
+    event_id: int | None = None
     is_active: bool = True
 
 
@@ -37,6 +39,8 @@ class ChurchActivityUpdate(BaseModel):
     is_recurring: bool | None = None
     recurrence_pattern: str | None = None
     contact_phone: str | None = None
+    track_attendance: bool | None = None
+    event_id: int | None = None
     is_active: bool | None = None
 
 

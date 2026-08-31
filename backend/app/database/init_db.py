@@ -1,7 +1,9 @@
 from sqlalchemy import select
 
+from app.core.config import load_localization_config
 from app.database.base import Base
 from app.database.session import SessionLocal, engine
+from app.models.church_setting import ChurchSetting
 from app.models.user import User
 import app.models  # noqa: F401 - registers models with Base.metadata
 
@@ -25,7 +27,7 @@ def initialize_database() -> None:
                 User(
                     username="pastor",
                     email="pastor@ecclesia.org",
-                    full_name="Pastor Dr. Samuel Thomas",
+                    full_name="Pastor Mr. John Doe",
                     hashed_password=User.hash_password("pastor123"),
                     role="pastor",
                     is_active=True,
@@ -64,4 +66,19 @@ def initialize_database() -> None:
                 ),
             ]
             db.add_all(default_users)
+            db.commit()
+
+        setting_exists = db.scalar(select(ChurchSetting).limit(1))
+        if not setting_exists:
+            raw_cfg = load_localization_config()
+            setting = ChurchSetting(
+                id=1,
+                active_mode=raw_cfg.get("active_mode", "IN"),
+                organization_data=raw_cfg.get("organization", {}),
+                modules_data=raw_cfg.get("modules", {}),
+                roles_data=raw_cfg.get("roles", []),
+                in_mode_settings=raw_cfg.get("in_mode_settings", {}),
+                global_mode_settings=raw_cfg.get("global_mode_settings", {}),
+            )
+            db.add(setting)
             db.commit()

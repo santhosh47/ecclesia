@@ -85,13 +85,45 @@ export const api = {
   getDashboardStats: () => request<DashboardData>('/dashboard/stats'),
 
   // Members
-  getMembers: (params?: { search?: string; status?: string; member_type?: string; household_id?: number; ministry_id?: number }) => {
+  getMembers: (params?: {
+    search?: string;
+    status?: string;
+    member_type?: string;
+    gender?: string;
+    marital_status?: string;
+    leadership_role?: string;
+    household_id?: number;
+    ministry_id?: number;
+    baptism_location?: string;
+    has_baptism?: boolean;
+    baptism_date_from?: string;
+    baptism_date_to?: string;
+    joined_date_from?: string;
+    joined_date_to?: string;
+    dob_from?: string;
+    dob_to?: string;
+    sort_by?: string;
+    sort_order?: string;
+  }) => {
     const query = new URLSearchParams();
     if (params?.search) query.append('search', params.search);
     if (params?.status) query.append('status', params.status);
     if (params?.member_type) query.append('member_type', params.member_type);
+    if (params?.gender) query.append('gender', params.gender);
+    if (params?.marital_status) query.append('marital_status', params.marital_status);
+    if (params?.leadership_role) query.append('leadership_role', params.leadership_role);
     if (params?.household_id) query.append('household_id', params.household_id.toString());
     if (params?.ministry_id) query.append('ministry_id', params.ministry_id.toString());
+    if (params?.baptism_location) query.append('baptism_location', params.baptism_location);
+    if (params?.has_baptism !== undefined) query.append('has_baptism', params.has_baptism.toString());
+    if (params?.baptism_date_from) query.append('baptism_date_from', params.baptism_date_from);
+    if (params?.baptism_date_to) query.append('baptism_date_to', params.baptism_date_to);
+    if (params?.joined_date_from) query.append('joined_date_from', params.joined_date_from);
+    if (params?.joined_date_to) query.append('joined_date_to', params.joined_date_to);
+    if (params?.dob_from) query.append('dob_from', params.dob_from);
+    if (params?.dob_to) query.append('dob_to', params.dob_to);
+    if (params?.sort_by) query.append('sort_by', params.sort_by);
+    if (params?.sort_order) query.append('sort_order', params.sort_order);
     return request<Member[]>(`/members?${query.toString()}`);
   },
   getMemberDetail: (id: number) => request<MemberDetail>(`/members/${id}`),
@@ -106,6 +138,55 @@ export const api = {
       body: JSON.stringify(data),
     }),
   deleteMember: (id: number) => request<void>(`/members/${id}`, { method: 'DELETE' }),
+
+  uploadMemberAvatar: async (memberId: number, file: File): Promise<Member> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = localStorage.getItem('ecclesia_auth_token');
+    const headers: Record<string, string> = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    const response = await fetch(`${API_BASE}/members/${memberId}/avatar`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      let err = 'Failed to upload photo';
+      try {
+        const json = await response.json();
+        if (json.detail) err = json.detail;
+      } catch {}
+      throw new Error(err);
+    }
+    return response.json() as Promise<Member>;
+  },
+
+  deleteMemberAvatar: (memberId: number) =>
+    request<Member>(`/members/${memberId}/avatar`, { method: 'DELETE' }),
+
+  uploadStandaloneAvatar: async (file: File): Promise<{ avatar_url: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = localStorage.getItem('ecclesia_auth_token');
+    const headers: Record<string, string> = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    const response = await fetch(`${API_BASE}/members/upload-avatar`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      let err = 'Failed to upload avatar';
+      try {
+        const json = await response.json();
+        if (json.detail) err = json.detail;
+      } catch {}
+      throw new Error(err);
+    }
+    return response.json() as Promise<{ avatar_url: string }>;
+  },
 
   // Households
   getHouseholds: (search?: string) => {
@@ -349,7 +430,51 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ csv_content: csvContent }),
     }),
-  getExportMembersCsvUrl: () => `${API_BASE}/members/csv/export`,
+  getExportMembersCsvUrl: (params?: {
+    search?: string;
+    status?: string;
+    member_type?: string;
+    gender?: string;
+    marital_status?: string;
+    leadership_role?: string;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.status) query.append('status', params.status);
+    if (params?.member_type) query.append('member_type', params.member_type);
+    if (params?.gender) query.append('gender', params.gender);
+    if (params?.marital_status) query.append('marital_status', params.marital_status);
+    if (params?.leadership_role) query.append('leadership_role', params.leadership_role);
+    return `${API_BASE}/members/csv/export?${query.toString()}`;
+  },
+  getExportActivitiesCsvUrl: (params?: { category?: string; activity_type?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.category) query.append('category', params.category);
+    if (params?.activity_type) query.append('activity_type', params.activity_type);
+    return `${API_BASE}/church-calendar/csv/export?${query.toString()}`;
+  },
+  getExportAttendanceCsvUrl: (params?: { event_id?: number; member_id?: number; status?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.event_id) query.append('event_id', params.event_id.toString());
+    if (params?.member_id) query.append('member_id', params.member_id.toString());
+    if (params?.status) query.append('status', params.status);
+    return `${API_BASE}/attendance/csv/export?${query.toString()}`;
+  },
+  getExportContributionsCsvUrl: (params?: { fund?: string; payment_method?: string; start_date?: string; end_date?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.fund) query.append('fund', params.fund);
+    if (params?.payment_method) query.append('payment_method', params.payment_method);
+    if (params?.start_date) query.append('start_date', params.start_date);
+    if (params?.end_date) query.append('end_date', params.end_date);
+    return `${API_BASE}/finances/contributions/csv/export?${query.toString()}`;
+  },
+  getExportExpensesCsvUrl: (params?: { category?: string; start_date?: string; end_date?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.category) query.append('category', params.category);
+    if (params?.start_date) query.append('start_date', params.start_date);
+    if (params?.end_date) query.append('end_date', params.end_date);
+    return `${API_BASE}/finances/expenses/csv/export?${query.toString()}`;
+  },
 
   // Finances (Giving, Expenses, Campaigns)
   getFinanceSummary: () => request<FinanceSummary>('/finances/summary'),

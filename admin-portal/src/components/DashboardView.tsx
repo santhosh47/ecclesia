@@ -109,8 +109,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* KPI Metric Grid */}
       <div className="kpi-grid">
         <div
-          className="kpi-card"
-          style={{ '--kpi-accent': 'var(--gold-500)', '--kpi-bg': 'rgba(245, 158, 11, 0.12)' } as any}
+          className="kpi-card card-hover"
+          style={{ '--kpi-accent': 'var(--gold-500)', '--kpi-bg': 'rgba(245, 158, 11, 0.12)', cursor: 'pointer' } as any}
+          onClick={() => onNavigate('members')}
+          title="Click to view Church Member Directory"
         >
           <div className="kpi-info">
             <h3>Total Members</h3>
@@ -126,8 +128,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div
-          className="kpi-card"
-          style={{ '--kpi-accent': 'var(--emerald)', '--kpi-bg': 'rgba(16, 185, 129, 0.12)' } as any}
+          className="kpi-card card-hover"
+          style={{ '--kpi-accent': 'var(--emerald)', '--kpi-bg': 'rgba(16, 185, 129, 0.12)', cursor: 'pointer' } as any}
+          onClick={() => onNavigate('finances')}
+          title="Click to view Church Finances & Giving"
         >
           <div className="kpi-info">
             <h3>YTD Contributions</h3>
@@ -143,8 +147,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div
-          className="kpi-card"
-          style={{ '--kpi-accent': 'var(--royal-blue)', '--kpi-bg': 'rgba(59, 130, 246, 0.12)' } as any}
+          className="kpi-card card-hover"
+          style={{ '--kpi-accent': 'var(--royal-blue)', '--kpi-bg': 'rgba(59, 130, 246, 0.12)', cursor: 'pointer' } as any}
+          onClick={() => onNavigate('attendance')}
+          title="Click to view Attendance & Check-in"
         >
           <div className="kpi-info">
             <h3>Avg Sunday Attendance</h3>
@@ -157,8 +163,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div
-          className="kpi-card"
-          style={{ '--kpi-accent': 'var(--rose)', '--kpi-bg': 'rgba(244, 63, 94, 0.12)' } as any}
+          className="kpi-card card-hover"
+          style={{ '--kpi-accent': 'var(--rose)', '--kpi-bg': 'rgba(244, 63, 94, 0.12)', cursor: 'pointer' } as any}
+          onClick={() => onNavigate('milestones')}
+          title="Click to view Upcoming Milestones"
         >
           <div className="kpi-info">
             <h3>Upcoming Milestones</h3>

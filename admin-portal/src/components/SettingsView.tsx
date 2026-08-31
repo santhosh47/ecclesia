@@ -367,7 +367,7 @@ export const SettingsView: React.FC = () => {
                   value={profileForm.senior_pastor || ''}
                   onChange={(e) => setProfileForm({ ...profileForm, senior_pastor: e.target.value })}
                   className="form-input"
-                  placeholder="e.g. Pastor Dr. Samuel Thomas"
+                  placeholder="e.g. Pastor Mr. John Doe"
                 />
               </div>
 

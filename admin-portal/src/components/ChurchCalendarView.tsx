@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import {
   Calendar as CalendarIcon,
+  CheckCircle2,
   Clock,
+  Download,
+  Edit2,
   Filter,
   MapPin,
   Plus,
@@ -16,13 +19,18 @@ import { api } from '../api/client';
 import { useLocalization } from '../context/LocalizationContext';
 import { ChurchActivity } from '../types';
 
-export const ChurchCalendarView: React.FC = () => {
+interface ChurchCalendarViewProps {
+  onNavigate?: (section: string, eventId?: number) => void;
+}
+
+export const ChurchCalendarView: React.FC<ChurchCalendarViewProps> = ({ onNavigate }) => {
   const { hasPermission } = useLocalization();
   const [activities, setActivities] = useState<ChurchActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const [filterType, setFilterType] = useState<string>('All');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<ChurchActivity | null>(null);
 
   const [form, setForm] = useState<{
     title: string;
@@ -37,6 +45,7 @@ export const ChurchCalendarView: React.FC = () => {
     is_recurring: boolean;
     recurrence_pattern: string;
     contact_phone: string;
+    track_attendance: boolean;
   }>({
     title: '',
     category: 'Worship Service',
@@ -50,6 +59,7 @@ export const ChurchCalendarView: React.FC = () => {
     is_recurring: true,
     recurrence_pattern: 'Weekly on Sundays at 9:00 AM',
     contact_phone: '',
+    track_attendance: true,
   });
 
   const categories = [
@@ -84,6 +94,44 @@ export const ChurchCalendarView: React.FC = () => {
     fetchActivities();
   }, [filterCategory, filterType]);
 
+  const handleOpenAdd = () => {
+    setForm({
+      title: '',
+      category: 'Worship Service',
+      activity_type: 'Regular Weekly',
+      starts_at: new Date().toISOString().slice(0, 16),
+      ends_at: '',
+      location: 'Main Sanctuary',
+      organizer_name: '',
+      target_group: 'All Congregation',
+      description: '',
+      is_recurring: true,
+      recurrence_pattern: 'Weekly on Sundays at 9:00 AM',
+      contact_phone: '',
+      track_attendance: true,
+    });
+    setShowAddModal(true);
+  };
+
+  const handleOpenEdit = (act: ChurchActivity) => {
+    setEditingActivity(act);
+    setForm({
+      title: act.title,
+      category: act.category,
+      activity_type: act.activity_type,
+      starts_at: act.starts_at ? new Date(act.starts_at).toISOString().slice(0, 16) : '',
+      ends_at: act.ends_at ? new Date(act.ends_at).toISOString().slice(0, 16) : '',
+      location: act.location || '',
+      organizer_name: act.organizer_name || '',
+      target_group: act.target_group || 'All Congregation',
+      description: act.description || '',
+      is_recurring: act.is_recurring,
+      recurrence_pattern: act.recurrence_pattern || '',
+      contact_phone: act.contact_phone || '',
+      track_attendance: act.track_attendance ?? false,
+    });
+  };
+
   const handleCreateActivity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title) return;
@@ -101,11 +149,38 @@ export const ChurchCalendarView: React.FC = () => {
         is_recurring: form.is_recurring,
         recurrence_pattern: form.recurrence_pattern,
         contact_phone: form.contact_phone,
+        track_attendance: form.track_attendance,
       });
       setShowAddModal(false);
       fetchActivities();
     } catch (err) {
       console.error('Failed to create church activity:', err);
+    }
+  };
+
+  const handleUpdateActivity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingActivity || !form.title) return;
+    try {
+      await api.updateChurchActivity(editingActivity.id, {
+        title: form.title,
+        category: form.category,
+        activity_type: form.activity_type,
+        starts_at: new Date(form.starts_at).toISOString(),
+        ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : undefined,
+        location: form.location,
+        organizer_name: form.organizer_name,
+        target_group: form.target_group,
+        description: form.description,
+        is_recurring: form.is_recurring,
+        recurrence_pattern: form.recurrence_pattern,
+        contact_phone: form.contact_phone,
+        track_attendance: form.track_attendance,
+      });
+      setEditingActivity(null);
+      fetchActivities();
+    } catch (err) {
+      console.error('Failed to update church activity:', err);
     }
   };
 
@@ -117,6 +192,14 @@ export const ChurchCalendarView: React.FC = () => {
     } catch (err) {
       console.error('Failed to delete activity:', err);
     }
+  };
+
+  const handleExportCsv = () => {
+    const url = api.getExportActivitiesCsvUrl({
+      category: filterCategory !== 'All' ? filterCategory : undefined,
+      activity_type: filterType !== 'All' ? filterType : undefined,
+    });
+    window.open(url, '_blank');
   };
 
   const getCategoryTheme = (cat: string) => {
@@ -152,16 +235,28 @@ export const ChurchCalendarView: React.FC = () => {
             Schedule and coordinate regular weekly services, prayer meetings, choir rehearsals, committee boards, and special church gatherings.
           </p>
         </div>
-        {hasPermission('manage_calendar') && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button
-            onClick={() => setShowAddModal(true)}
-            className="btn btn-primary"
+            onClick={handleExportCsv}
+            className="btn btn-secondary"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            title="Download CSV report of scheduled activities"
           >
-            <Plus size={16} />
-            <span>Schedule Activity</span>
+            <Download size={16} />
+            <span>Export CSV</span>
           </button>
-        )}
+
+          {hasPermission('manage_calendar') && (
+            <button
+              onClick={handleOpenAdd}
+              className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Plus size={16} />
+              <span>Schedule Activity</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -230,110 +325,199 @@ export const ChurchCalendarView: React.FC = () => {
                   borderTop: `3px solid ${theme.accent}`,
                   padding: '20px',
                   gap: '16px',
+                  overflow: 'hidden',
+                  wordBreak: 'break-word',
                 }}
               >
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', gap: '8px', flexWrap: 'wrap' }}>
                     <span className={`status-pill ${theme.badgeClass}`}>
                       {act.category}
                     </span>
-                    {act.is_recurring ? (
-                      <span className="status-pill badge-neutral" style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <Repeat size={11} color="var(--gold-400)" />
-                        <span>Recurring</span>
-                      </span>
-                    ) : (
-                      <span className="status-pill status-visitor" style={{ fontSize: '11px' }}>
-                        {act.activity_type}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {act.track_attendance && (
+                        <span className="status-pill badge-emerald" style={{ fontSize: '10.5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <CheckCircle2 size={11} />
+                          <span>Attendance Enabled</span>
+                        </span>
+                      )}
+                      {act.is_recurring ? (
+                        <span className="status-pill badge-neutral" style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <Repeat size={11} color="var(--gold-400)" />
+                          <span>Recurring</span>
+                        </span>
+                      ) : (
+                        <span className="status-pill status-visitor" style={{ fontSize: '11px' }}>
+                          {act.activity_type}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', lineHeight: 1.35 }}>
+                  <h3
+                    style={{
+                      fontSize: '16px',
+                      fontWeight: 700,
+                      color: 'var(--text-primary)',
+                      marginBottom: '12px',
+                      lineHeight: 1.35,
+                      overflowWrap: 'break-word',
+                      wordBreak: 'break-word',
+                    }}
+                  >
                     {act.title}
                   </h3>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <CalendarIcon size={14} color="var(--gold-400)" />
+                      <CalendarIcon size={14} color="var(--gold-400)" style={{ flexShrink: 0 }} />
                       <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                         {dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Clock size={14} color="var(--gold-400)" />
+                      <Clock size={14} color="var(--gold-400)" style={{ flexShrink: 0 }} />
                       <span>
                         {dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                         {act.ends_at && ` - ${new Date(act.ends_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}
                       </span>
                     </div>
                     {act.location && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <MapPin size={14} color="var(--gold-400)" />
-                        <span>{act.location}</span>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                        <MapPin size={14} color="var(--gold-400)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <span style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}>{act.location}</span>
                       </div>
                     )}
                     {act.organizer_name && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <User size={14} color="var(--gold-400)" />
-                        <span>Leader: <strong style={{ color: 'var(--text-primary)' }}>{act.organizer_name}</strong></span>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                        <User size={14} color="var(--gold-400)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <span style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+                          Leader: <strong style={{ color: 'var(--text-primary)' }}>{act.organizer_name}</strong>
+                        </span>
                       </div>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Users size={14} color="var(--gold-400)" />
-                      <span>Target: {act.target_group}</span>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                      <Users size={14} color="var(--gold-400)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                      <span style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}>Target: {act.target_group}</span>
                     </div>
                   </div>
 
                   {act.recurrence_pattern && (
-                    <div style={{ marginTop: '12px', fontSize: '11.5px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', color: 'var(--gold-400)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Repeat size={12} />
+                    <div
+                      style={{
+                        marginTop: '12px',
+                        fontSize: '11.5px',
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid var(--border-subtle)',
+                        padding: '6px 10px',
+                        borderRadius: 'var(--radius-sm)',
+                        color: 'var(--gold-400)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        overflowWrap: 'break-word',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      <Repeat size={12} style={{ flexShrink: 0 }} />
                       <span>{act.recurrence_pattern}</span>
                     </div>
                   )}
 
                   {act.description && (
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.45, marginTop: '10px' }}>
+                    <p
+                      style={{
+                        fontSize: '12px',
+                        color: 'var(--text-muted)',
+                        lineHeight: 1.45,
+                        marginTop: '10px',
+                        overflowWrap: 'break-word',
+                        wordBreak: 'break-word',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
                       {act.description}
                     </p>
                   )}
                 </div>
 
-                {hasPermission('manage_calendar') && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px', marginTop: '4px' }}>
-                    <button
-                      onClick={() => handleDeleteActivity(act.id)}
-                      className="btn btn-icon btn-danger btn-sm"
-                      title="Delete Activity"
-                    >
-                      <Trash2 size={14} />
-                      <span style={{ fontSize: '11.5px', marginLeft: '4px' }}>Delete</span>
-                    </button>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    borderTop: '1px solid var(--border-subtle)',
+                    paddingTop: '12px',
+                    marginTop: '4px',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div>
+                    {act.track_attendance && (
+                      <button
+                        onClick={() => onNavigate?.('attendance', act.event_id || undefined)}
+                        className="btn btn-sm btn-secondary"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: 'var(--gold-400)', borderColor: 'var(--gold-400)' }}
+                      >
+                        <CheckCircle2 size={13} />
+                        <span>Track Attendance</span>
+                      </button>
+                    )}
                   </div>
-                )}
+
+                  {hasPermission('manage_calendar') && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button
+                        onClick={() => handleOpenEdit(act)}
+                        className="btn btn-icon btn-secondary btn-sm"
+                        title="Edit Activity"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteActivity(act.id)}
+                        className="btn btn-icon btn-danger btn-sm"
+                        title="Delete Activity"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Add Church Activity Modal */}
-      {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+      {/* Add / Edit Church Activity Modal */}
+      {(showAddModal || editingActivity !== null) && (
+        <div className="modal-overlay" onClick={() => { setShowAddModal(false); setEditingActivity(null); }}>
           <div className="modal-dialog modal-dialog-large" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <h3 className="modal-title">Schedule Church Activity or Service</h3>
+                <h3 className="modal-title">
+                  {editingActivity ? 'Edit Church Activity or Service' : 'Schedule Church Activity or Service'}
+                </h3>
                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  Add a regular weekly service, rehearsal, committee meeting, or special conference to the parish calendar.
+                  {editingActivity
+                    ? 'Update schedule, location, recurrence, or attendance tracking.'
+                    : 'Add a regular weekly service, rehearsal, committee meeting, or special conference to the parish calendar.'}
                 </p>
               </div>
-              <button className="btn btn-icon btn-secondary" onClick={() => setShowAddModal(false)}>
+              <button
+                className="btn btn-icon btn-secondary"
+                onClick={() => { setShowAddModal(false); setEditingActivity(null); }}
+              >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateActivity}>
+            <form onSubmit={editingActivity ? handleUpdateActivity : handleCreateActivity}>
               <div className="modal-content">
                 <div className="form-grid" style={{ marginBottom: '16px' }}>
                   <div className="form-group-full">
@@ -442,10 +626,32 @@ export const ChurchCalendarView: React.FC = () => {
                     />
                   </div>
 
+                  <div className="form-group-full" style={{ display: 'flex', gap: '24px', alignItems: 'center', padding: '10px 0' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={form.is_recurring}
+                        onChange={(e) => setForm({ ...form, is_recurring: e.target.checked })}
+                      />
+                      <span style={{ fontSize: '13px', fontWeight: 600 }}>Recurring Gathering</span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={form.track_attendance}
+                        onChange={(e) => setForm({ ...form, track_attendance: e.target.checked })}
+                      />
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--gold-400)' }}>
+                        ✓ Track Attendance (Syncs with Check-In Roster)
+                      </span>
+                    </label>
+                  </div>
+
                   <div className="form-group-full">
                     <label className="form-label">Description & Order of Service</label>
                     <textarea
-                      rows={2}
+                      rows={3}
                       className="form-textarea"
                       value={form.description}
                       onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -458,7 +664,7 @@ export const ChurchCalendarView: React.FC = () => {
               <div className="modal-footer">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => { setShowAddModal(false); setEditingActivity(null); }}
                   className="btn btn-secondary"
                 >
                   Cancel
@@ -469,7 +675,7 @@ export const ChurchCalendarView: React.FC = () => {
                   style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                 >
                   <Plus size={16} />
-                  <span>Schedule Activity</span>
+                  <span>{editingActivity ? 'Save Changes' : 'Schedule Activity'}</span>
                 </button>
               </div>
             </form>

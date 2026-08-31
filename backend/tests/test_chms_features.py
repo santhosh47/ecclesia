@@ -36,7 +36,7 @@ def test_church_profile_and_feature_toggles() -> None:
         # 1. Update Church Profile (Name, Senior Pastor, Contact)
         profile_update = {
             "name": "St. Luke's Cathedral & Parish",
-            "senior_pastor": "Pastor Dr. Samuel Thomas, DD",
+            "senior_pastor": "Pastor Mr. John Doe, DD",
             "denomination": "Anglican Communion",
             "phone": "+91 80 9999 8888",
         }
@@ -44,7 +44,7 @@ def test_church_profile_and_feature_toggles() -> None:
         assert update_resp.status_code == 200
         data = update_resp.json()
         assert data["organization"]["name"] == "St. Luke's Cathedral & Parish"
-        assert data["organization"]["senior_pastor"] == "Pastor Dr. Samuel Thomas, DD"
+        assert data["organization"]["senior_pastor"] == "Pastor Mr. John Doe, DD"
 
         # 2. Toggle fine-grained module (e.g. disable pdf_certificates then re-enable)
         toggle_resp = client.post(
@@ -179,7 +179,7 @@ def test_certificates_and_pdf_generation() -> None:
         issue_payload = {
             "certificate_type": "Baptism",
             "recipient_name": "Jonathan Sterling",
-            "officiant_name": "Pastor Dr. Samuel Thomas",
+            "officiant_name": "Pastor Mr. John Doe",
             "witness_1": "David Sterling",
             "witness_2": "Grace Sterling",
             "event_date": "2026-08-15",

@@ -25,7 +25,10 @@ def get_event_or_404(event_id: int, db: Session) -> Event:
 
 def _format_event_read(e: Event) -> EventRead:
     roster_count = len([r for r in e.attendance_records if r.status in ("Present", "Late")])
-    total_headcount = e.headcount_adults + e.headcount_children + e.headcount_online
+    physical_headcount = (e.headcount_adults or 0) + (e.headcount_children or 0)
+    # Total attendance definition: max of physical headcount and roster check-in count + online
+    physical_total = max(physical_headcount, roster_count)
+    total_attendance = physical_total + (e.headcount_online or 0)
     return EventRead(
         id=e.id,
         title=e.title,
@@ -34,12 +37,12 @@ def _format_event_read(e: Event) -> EventRead:
         ends_at=e.ends_at,
         location=e.location,
         description=e.description,
-        headcount_adults=e.headcount_adults,
-        headcount_children=e.headcount_children,
-        headcount_online=e.headcount_online,
+        headcount_adults=e.headcount_adults or 0,
+        headcount_children=e.headcount_children or 0,
+        headcount_online=e.headcount_online or 0,
         is_completed=e.is_completed,
         created_at=e.created_at,
-        total_headcount=total_headcount,
+        total_headcount=total_attendance,
         roster_checked_in_count=roster_count,
     )
 

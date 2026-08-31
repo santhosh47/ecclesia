@@ -147,21 +147,58 @@ async def import_members_from_csv(
 
 
 @router.get("/export")
-def export_members_to_csv(db: Session = Depends(get_db)) -> Response:
-    """Export all church members to a downloadable CSV file."""
-    members = db.scalars(select(Member).order_by(Member.last_name.asc(), Member.first_name.asc())).all()
+def export_members_to_csv(
+    search: str | None = None,
+    status: str | None = None,
+    member_type: str | None = None,
+    gender: str | None = None,
+    marital_status: str | None = None,
+    leadership_role: str | None = None,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Export church members to a downloadable CSV file with optional filtering."""
+    query = select(Member).order_by(Member.last_name.asc(), Member.first_name.asc())
+
+    if search:
+        search_term = f"%{search.strip()}%"
+        query = query.where(
+            (Member.first_name.ilike(search_term))
+            | (Member.last_name.ilike(search_term))
+            | (Member.email.ilike(search_term))
+            | (Member.phone.ilike(search_term))
+            | (Member.city.ilike(search_term))
+        )
+    if status and status != "ALL":
+        query = query.where(Member.status == status)
+    if member_type and member_type != "ALL":
+        query = query.where(Member.member_type == member_type)
+    if gender and gender != "ALL":
+        query = query.where(Member.gender == gender)
+    if marital_status and marital_status != "ALL":
+        query = query.where(Member.marital_status == marital_status)
+    if leadership_role and leadership_role != "ALL":
+        if leadership_role == "LEADERS_ONLY":
+            query = query.where(Member.leadership_role.is_not(None), Member.leadership_role != "")
+        elif leadership_role == "GENERAL_ONLY":
+            query = query.where((Member.leadership_role.is_(None)) | (Member.leadership_role == ""))
+        else:
+            query = query.where(Member.leadership_role == leadership_role)
+
+    members = db.scalars(query).all()
 
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(
         [
-            "ID",
             "First Name",
             "Last Name",
             "Title",
             "Email",
             "Phone",
+            "ID",
+            "Leadership Role",
             "Gender",
+            "Marital Status",
             "Status",
             "Member Type",
             "Household ID",
@@ -170,6 +207,8 @@ def export_members_to_csv(db: Session = Depends(get_db)) -> Response:
             "PAN / Tax ID",
             "Date of Birth",
             "Baptism Date",
+            "Baptism Location",
+            "Joined Date",
             "Wedding Anniversary",
             "Address",
             "City",
@@ -183,13 +222,15 @@ def export_members_to_csv(db: Session = Depends(get_db)) -> Response:
         hh_name = m.household.name if m.household else ""
         writer.writerow(
             [
-                m.id,
                 m.first_name,
                 m.last_name,
                 m.title or "",
                 m.email or "",
                 m.phone or "",
+                m.id,
+                m.leadership_role or "",
                 m.gender or "",
+                m.marital_status or "",
                 m.status,
                 m.member_type,
                 m.household_id or "",
@@ -198,6 +239,8 @@ def export_members_to_csv(db: Session = Depends(get_db)) -> Response:
                 m.pan_number or m.tax_id or "",
                 m.date_of_birth.strftime("%Y-%m-%d") if m.date_of_birth else "",
                 m.baptism_date.strftime("%Y-%m-%d") if m.baptism_date else "",
+                m.baptism_location or "",
+                m.joined_date.strftime("%Y-%m-%d") if m.joined_date else "",
                 m.wedding_anniversary.strftime("%Y-%m-%d") if m.wedding_anniversary else "",
                 m.address or "",
                 m.city or "",

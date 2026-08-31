@@ -39,7 +39,7 @@ def seed_church_data(db: Session = Depends(get_db)) -> dict[str, str]:
     # 0. User Accounts
     default_users = [
         User(username="admin", email="admin@ecclesia.org", full_name="Senior Pastor / Administrator", hashed_password=User.hash_password("admin123"), role="super_admin", is_active=True),
-        User(username="pastor", email="pastor@ecclesia.org", full_name="Pastor Dr. Samuel Thomas", hashed_password=User.hash_password("pastor123"), role="pastor", is_active=True),
+        User(username="pastor", email="pastor@ecclesia.org", full_name="Pastor Mr. John Doe", hashed_password=User.hash_password("pastor123"), role="pastor", is_active=True),
         User(username="treasurer", email="treasurer@ecclesia.org", full_name="Head Treasurer & Accountant", hashed_password=User.hash_password("treasurer123"), role="treasurer", is_active=True),
         User(username="elder", email="elder@ecclesia.org", full_name="Elder David Sterling", hashed_password=User.hash_password("elder123"), role="elder", is_active=True),
         User(username="staff", email="staff@ecclesia.org", full_name="Church Office Secretary", hashed_password=User.hash_password("staff123"), role="sub_admin", is_active=True),
@@ -112,7 +112,7 @@ def seed_church_data(db: Session = Depends(get_db)) -> dict[str, str]:
             starts_at=datetime(today.year, today.month, today.day, 9, 0) + timedelta(days=(6 - today.weekday()) % 7),
             ends_at=datetime(today.year, today.month, today.day, 11, 0) + timedelta(days=(6 - today.weekday()) % 7),
             location="Main Sanctuary",
-            organizer_name="Pastor Dr. Samuel Thomas",
+            organizer_name="Pastor Mr. John Doe",
             target_group="All Congregation",
             description="Traditional liturgical worship service with sermon and Holy Communion.",
             is_recurring=True,
@@ -176,7 +176,7 @@ def seed_church_data(db: Session = Depends(get_db)) -> dict[str, str]:
             starts_at=datetime(today.year, today.month, 28, 8, 30),
             ends_at=datetime(today.year, today.month, 29, 17, 0),
             location="Ecclesia Retreat Center, Nandi Hills",
-            organizer_name="Pastor Dr. Samuel Thomas",
+            organizer_name="Pastor Mr. John Doe",
             target_group="Ministry Leaders, Elders & Staff",
             description="Two-day spiritual retreat focusing on church vision, disciple-making, and leadership development.",
             is_recurring=False,
@@ -316,8 +316,8 @@ def seed_church_data(db: Session = Depends(get_db)) -> dict[str, str]:
     db.commit()
 
     db.add_all([
-        IssuedCertificate(certificate_number=f"CERT-BAP-{today.year}-0042", certificate_type="Baptism", member_id=members_data[4].id, recipient_name="Chloe Anderson", issue_date=date(2018, 6, 12), event_date=date(2018, 6, 12), officiant_name="Pastor Dr. Samuel Thomas", witness_1="Dr. Marcus Anderson", church_name="St. Luke's Ecclesia Church", church_registration_no="CIT(E)/BLR/80G/2024-25/AABTE1234F", church_address="12 Cathedral Road, Bangalore", verification_code="ECCL-BAP-7788"),
-        IssuedCertificate(certificate_number=f"CERT-WED-{today.year}-0018", certificate_type="Wedding", member_id=members_data[5].id, recipient_name="Carlos Morales", secondary_name="Elena Morales", issue_date=date(2014, 10, 25), event_date=date(2014, 10, 25), officiant_name="Pastor Dr. Samuel Thomas", witness_1="David Sterling", church_name="St. Luke's Ecclesia Church", church_registration_no="CIT(E)/BLR/80G/2024-25/AABTE1234F", church_address="12 Cathedral Road, Bangalore", verification_code="ECCL-WED-9901"),
+        IssuedCertificate(certificate_number=f"CERT-BAP-{today.year}-0042", certificate_type="Baptism", member_id=members_data[4].id, recipient_name="Chloe Anderson", issue_date=date(2018, 6, 12), event_date=date(2018, 6, 12), officiant_name="Pastor Mr. John Doe", witness_1="Dr. Marcus Anderson", church_name="Church Of Christ", church_registration_no="CIT(E)/BLR/80G/2024-25/AABTE1234F", church_address="12 Cathedral Road, Bangalore", verification_code="ECCL-BAP-7788"),
+        IssuedCertificate(certificate_number=f"CERT-WED-{today.year}-0018", certificate_type="Wedding", member_id=members_data[5].id, recipient_name="Carlos Morales", secondary_name="Elena Morales", issue_date=date(2014, 10, 25), event_date=date(2014, 10, 25), officiant_name="Pastor Mr. John Doe", witness_1="David Sterling", church_name="Church Of Christ", church_registration_no="CIT(E)/BLR/80G/2024-25/AABTE1234F", church_address="12 Cathedral Road, Bangalore", verification_code="ECCL-WED-9901"),
     ])
     db.commit()
 
@@ -376,7 +376,7 @@ def seed_church_data(db: Session = Depends(get_db)) -> dict[str, str]:
     db.add_all([
         PrayerRequest(member_id=members_data[2].id, requester_name="Dr. Marcus Anderson", title="Medical Mission Camp in Rural Mandya", details="Pray for our team of 6 doctors traveling this weekend to conduct free health checkups.", category="Healing", is_confidential=False, status="Active"),
         PrayerRequest(member_id=members_data[0].id, requester_name="David Sterling", title="Mother's Knee Replacement Surgery", details="Pray for smooth surgery and quick recovery for Mrs. Ruth Sterling.", category="Family", is_confidential=True, status="Answered", answer_notes="Surgery completed successfully with no complications!"),
-        PastoralCareNote(member_id=members_data[8].id, author_name="Pastor Dr. Samuel Thomas", category="Pastoral Visit", content="Called Anthony to check in following his absence. He is returning to Bangalore next week.", follow_up_needed=True),
+        PastoralCareNote(member_id=members_data[8].id, author_name="Pastor Mr. John Doe", category="Pastoral Visit", content="Called Anthony to check in following his absence. He is returning to Bangalore next week.", follow_up_needed=True),
     ])
     db.commit()
 

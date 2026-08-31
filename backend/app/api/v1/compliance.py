@@ -48,7 +48,7 @@ def generate_tax_receipt(payload: IssueTaxReceiptRequest, db: Session = Depends(
 
     cfg = load_localization_config()
     org = cfg.get("organization", {})
-    church_name = org.get("name", "St. Luke's Ecclesia Church")
+    church_name = org.get("name", "Church Of Christ")
     tax_id = org.get("tax_id_in_80g", "CIT(E)/BLR/80G/2024-25/AABTE1234F")
 
     # Generate sequential receipt number
@@ -80,7 +80,7 @@ def generate_tax_receipt(payload: IssueTaxReceiptRequest, db: Session = Depends(
         currency=contrib.currency or "INR",
         financial_year=payload.financial_year,
         issue_date=date.today(),
-        authorized_signatory="Pastor Dr. Samuel Thomas (Senior Pastor & Treasurer)",
+        authorized_signatory="Pastor Mr. John Doe (Senior Pastor & Treasurer)",
         church_tax_registration_no=tax_id,
         pdf_download_url=f"/api/v1/compliance/receipts/{receipt_num}/pdf",
         notes=payload.notes,
@@ -104,7 +104,7 @@ def download_tax_receipt_pdf(receipt_id: int, db: Session = Depends(get_db)) -> 
 
     cfg = load_localization_config()
     org = cfg.get("organization", {})
-    church_name = org.get("name", "St. Luke's Ecclesia Church")
+    church_name = org.get("name", "Church Of Christ")
 
     pdf_bytes = generate_tax_receipt_pdf(
         receipt_number=receipt.receipt_number,

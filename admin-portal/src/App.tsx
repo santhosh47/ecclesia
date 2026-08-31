@@ -78,6 +78,7 @@ function AppContent() {
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showCsvMigrationModal, setShowCsvMigrationModal] = useState(false);
   const [statementMemberId, setStatementMemberId] = useState<number | null>(null);
+  const [attendanceEventId, setAttendanceEventId] = useState<number | null>(null);
 
   // Sync role whenever activeRole changes
   useEffect(() => {
@@ -403,7 +404,16 @@ function AppContent() {
             />
           )}
 
-          {activeSection === 'calendar' && <ChurchCalendarView />}
+          {activeSection === 'calendar' && (
+            <ChurchCalendarView
+              onNavigate={(section, eventId) => {
+                setActiveSection(section as NavSection);
+                if (eventId) {
+                  setAttendanceEventId(eventId);
+                }
+              }}
+            />
+          )}
 
           {activeSection === 'ledger' && <LedgerView />}
 
@@ -436,6 +446,7 @@ function AppContent() {
               events={events}
               members={members}
               isLoading={isLoading}
+              initialEventId={attendanceEventId}
               onOpenCheckInModal={() => setShowCheckInModal(true)}
               onSelectMember={(mId) => setSelectedMemberId(mId)}
               onRefreshEvents={loadAllData}

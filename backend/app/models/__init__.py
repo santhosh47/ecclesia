@@ -3,6 +3,7 @@
 from app.models.attendance import AttendanceRecord
 from app.models.certificates import CertificateTemplate, IssuedCertificate
 from app.models.church_activity import ChurchActivity
+from app.models.church_setting import ChurchSetting
 from app.models.compliance import FCRALog, TaxReceipt
 from app.models.event import Event
 from app.models.finance import Contribution, Expense, Pledge, PledgeCampaign
@@ -42,4 +43,5 @@ __all__ = [
     "TaxReceipt",
     "FCRALog",
     "ChurchActivity",
+    "ChurchSetting",
 ]

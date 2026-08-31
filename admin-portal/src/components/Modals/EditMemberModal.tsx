@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Edit3, Save, Home, Plus, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Edit3, Save, Home, Plus, CheckCircle2, Camera, Upload, Trash2 } from 'lucide-react';
 import { Household, Member, MemberDetail } from '../../types';
 import { api } from '../../api/client';
 
@@ -15,6 +15,11 @@ export const EditMemberModal: React.FC<EditMemberModalProps> = ({ member, househ
   const [showNewHouseholdForm, setShowNewHouseholdForm] = useState(false);
   const [isCreatingHousehold, setIsCreatingHousehold] = useState(false);
   const [householdCreatedNotice, setHouseholdCreatedNotice] = useState<string | null>(null);
+
+  // Avatar upload / replace state
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(member.avatar_url || null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // New household inline form state
   const [newHousehold, setNewHousehold] = useState({
@@ -35,6 +40,7 @@ export const EditMemberModal: React.FC<EditMemberModalProps> = ({ member, househ
     middle_name: member.middle_name || '',
     last_name: member.last_name || '',
     title: member.title || '',
+    avatar_url: member.avatar_url || '',
     leadership_role: member.leadership_role || '',
     email: member.email || '',
     phone: member.phone || '',
@@ -59,6 +65,39 @@ export const EditMemberModal: React.FC<EditMemberModalProps> = ({ member, househ
     household_role: member.household_role || 'Head',
     notes: member.notes || '',
   });
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Photo exceeds 5MB limit. Please choose a smaller image.');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      const res = await api.uploadMemberAvatar(member.id, file);
+      setAvatarPreview(res.avatar_url ?? null);
+      setFormData((prev) => ({ ...prev, avatar_url: res.avatar_url || '' }));
+    } catch (err: any) {
+      alert(err.message || 'Failed to upload member avatar');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!confirm('Are you sure you want to remove this profile photo?')) return;
+    try {
+      await api.deleteMemberAvatar(member.id);
+      setAvatarPreview(null);
+      setFormData((prev) => ({ ...prev, avatar_url: '' }));
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete photo');
+    }
+  };
 
   const handleHouseholdDropdownChange = (value: string) => {
     if (value === '__NEW_HOUSEHOLD__') {
@@ -156,6 +195,77 @@ export const EditMemberModal: React.FC<EditMemberModalProps> = ({ member, househ
 
         <form onSubmit={handleSubmit}>
           <div className="modal-content">
+            {/* Profile Photo Management */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px', padding: '14px', background: 'rgba(0, 0, 0, 0.15)', borderRadius: 'var(--radius-sm)' }}>
+              <div
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--surface-hover)',
+                  border: '2px solid var(--gold-400)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  flexShrink: 0,
+                }}
+              >
+                {avatarPreview || formData.avatar_url ? (
+                  <img
+                    src={avatarPreview || formData.avatar_url || undefined}
+                    alt="Member Avatar"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--gold-400)' }}>
+                    {`${(formData.first_name || '')[0] || 'M'}${(formData.last_name || '')[0] || ''}`}
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Profile Photo
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    style={{ display: 'none' }}
+                    accept="image/png, image/jpeg, image/webp, image/gif"
+                    onChange={handlePhotoSelect}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingPhoto}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Upload size={13} />
+                    <span>{isUploadingPhoto ? 'Uploading...' : avatarPreview ? 'Replace Photo' : 'Upload Photo'}</span>
+                  </button>
+
+                  {(avatarPreview || formData.avatar_url) && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      onClick={handleRemovePhoto}
+                      style={{ color: '#fb7185', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <Trash2 size={13} />
+                      <span>Remove</span>
+                    </button>
+                  )}
+                </div>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  PNG, JPG, WebP, GIF (Max 5MB). Changes save immediately.
+                </span>
+              </div>
+            </div>
+
             <h4 style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--gold-400)', marginBottom: '14px' }}>
               1. Personal & Contact Information
             </h4>

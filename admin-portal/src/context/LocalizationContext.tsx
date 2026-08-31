@@ -77,7 +77,7 @@ export const WORLD_CURRENCIES: CurrencyInfo[] = [
 
 const defaultProfile: ChurchProfile = {
   name: "Ecclesia Church",
-  senior_pastor: "Pastor Dr. Samuel Thomas",
+  senior_pastor: "Pastor Mr. John Doe",
   denomination: "Ecumenical & Anglican Communion",
   motto: "Worship • Community • Discipleship",
   established_year: 1985,
@@ -122,14 +122,14 @@ const defaultLocalizationContext: LocalizationContextType = {
   currencySymbol: '₹',
   isIndia: true,
   formatCurrency: (amount: number) => `₹${amount.toLocaleString('en-IN')}`,
-  toggleMode: async () => {},
-  updateChurchProfile: async () => {},
-  toggleModule: async () => {},
-  setCurrentRole: () => {},
+  toggleMode: async () => { },
+  updateChurchProfile: async () => { },
+  toggleModule: async () => { },
+  setCurrentRole: () => { },
   hasPermission: () => true,
-  saveRole: async () => {},
-  deleteRole: async () => {},
-  refreshConfig: async () => {},
+  saveRole: async () => { },
+  deleteRole: async () => { },
+  refreshConfig: async () => { },
 };
 
 const LocalizationContext = createContext<LocalizationContextType>(defaultLocalizationContext);

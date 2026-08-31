@@ -13,6 +13,7 @@ import {
   Calendar,
   CheckCircle,
 } from 'lucide-react';
+import { api } from '../api/client';
 import { useLocalization } from '../context/LocalizationContext';
 import { Contribution, Expense, FinanceSummary, Member, PledgeCampaign } from '../types';
 
@@ -52,6 +53,18 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
     (c) => fundFilter === 'ALL' || c.fund === fundFilter
   );
 
+  const handleExportContributionsCsv = () => {
+    const url = api.getExportContributionsCsvUrl({
+      fund: fundFilter !== 'ALL' ? fundFilter : undefined,
+    });
+    window.open(url, '_blank');
+  };
+
+  const handleExportExpensesCsv = () => {
+    const url = api.getExportExpensesCsvUrl({});
+    window.open(url, '_blank');
+  };
+
   return (
     <div>
       {/* Header */}
@@ -64,18 +77,44 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
             Weekly offerings, general contributions, pledge campaigns, operational expenses, and tax statements
           </p>
         </div>
-        {hasPermission('manage_finances') && (
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-primary" onClick={onOpenRecordGiving}>
-              <Plus size={16} />
-              <span>Record Contribution</span>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {activeTab === 'contributions' && (
+            <button
+              onClick={handleExportContributionsCsv}
+              className="btn btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              title="Download Contributions CSV"
+            >
+              <Download size={15} />
+              <span>Export Giving CSV</span>
             </button>
-            <button className="btn btn-secondary" onClick={onOpenRecordExpense}>
-              <Plus size={16} />
-              <span>Record Expense</span>
+          )}
+
+          {activeTab === 'expenses' && (
+            <button
+              onClick={handleExportExpensesCsv}
+              className="btn btn-secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              title="Download Expenses CSV"
+            >
+              <Download size={15} />
+              <span>Export Expenses CSV</span>
             </button>
-          </div>
-        )}
+          )}
+
+          {hasPermission('manage_finances') && (
+            <>
+              <button className="btn btn-primary" onClick={onOpenRecordGiving}>
+                <Plus size={16} />
+                <span>Record Contribution</span>
+              </button>
+              <button className="btn btn-secondary" onClick={onOpenRecordExpense}>
+                <Plus size={16} />
+                <span>Record Expense</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Financial KPI Banner */}

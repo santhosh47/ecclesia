@@ -1,8 +1,10 @@
 """Church finances, contributions, expenses, campaigns, and reports endpoints."""
 
+import csv
+import io
 from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -80,6 +82,76 @@ def list_contributions(
     return [_format_contribution_read(c) for c in contributions]
 
 
+@router.get("/contributions/csv/export")
+def export_contributions_to_csv(
+    member_id: int | None = None,
+    fund: str | None = None,
+    payment_method: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Export contributions to CSV."""
+    query = select(Contribution).options(joinedload(Contribution.member)).order_by(Contribution.date.desc(), Contribution.id.desc())
+
+    if member_id is not None:
+        query = query.where(Contribution.member_id == member_id)
+    if fund and fund != "All":
+        query = query.where(Contribution.fund == fund)
+    if payment_method and payment_method != "All":
+        query = query.where(Contribution.payment_method == payment_method)
+    if start_date:
+        query = query.where(Contribution.date >= start_date)
+    if end_date:
+        query = query.where(Contribution.date <= end_date)
+
+    contributions = list(db.scalars(query).unique())
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "ID",
+        "Date",
+        "Member / Donor Name",
+        "Member ID",
+        "Fund",
+        "Amount",
+        "Payment Method",
+        "Reference Number",
+        "Is Anonymous",
+        "Notes",
+    ])
+
+    for c in contributions:
+        donor_display = ""
+        if c.member:
+            donor_display = f"{c.member.first_name} {c.member.last_name}"
+        elif c.donor_name:
+            donor_display = c.donor_name
+        elif c.is_anonymous:
+            donor_display = "Anonymous Donor"
+
+        writer.writerow([
+            c.id,
+            c.date.strftime("%Y-%m-%d") if c.date else "",
+            donor_display,
+            c.member_id or "",
+            c.fund,
+            f"{c.amount:.2f}",
+            c.payment_method,
+            c.reference_number or "",
+            "Yes" if c.is_anonymous else "No",
+            c.notes or "",
+        ])
+
+    csv_data = output.getvalue().encode("utf-8-sig")
+    filename = f"contributions_export_{date.today().strftime('%Y%m%d')}.csv"
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("/contributions", response_model=ContributionRead, status_code=status.HTTP_201_CREATED)
 def create_contribution(payload: ContributionCreate, db: Session = Depends(get_db)) -> ContributionRead:
     contribution = Contribution(**payload.model_dump())
@@ -122,6 +194,62 @@ def list_expenses(
 
     expenses = list(db.scalars(query.limit(limit)))
     return [ExpenseRead.model_validate(e) for e in expenses]
+
+
+@router.get("/expenses/csv/export")
+def export_expenses_to_csv(
+    category: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Export expenses to CSV."""
+    query = select(Expense).order_by(Expense.date.desc(), Expense.id.desc())
+
+    if category and category != "All":
+        query = query.where(Expense.category == category)
+    if start_date:
+        query = query.where(Expense.date >= start_date)
+    if end_date:
+        query = query.where(Expense.date <= end_date)
+
+    expenses = list(db.scalars(query))
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "ID",
+        "Date",
+        "Title",
+        "Category",
+        "Amount",
+        "Payee",
+        "Payment Method",
+        "Approved By",
+        "Receipt Reference",
+        "Receipt URL",
+    ])
+
+    for e in expenses:
+        writer.writerow([
+            e.id,
+            e.date.strftime("%Y-%m-%d") if e.date else "",
+            e.title,
+            e.category,
+            f"{e.amount:.2f}",
+            e.payee or "",
+            e.payment_method,
+            e.approved_by or "",
+            e.receipt_reference or "",
+            e.receipt_file_url or "",
+        ])
+
+    csv_data = output.getvalue().encode("utf-8-sig")
+    filename = f"expenses_export_{date.today().strftime('%Y%m%d')}.csv"
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/expenses", response_model=ExpenseRead, status_code=status.HTTP_201_CREATED)

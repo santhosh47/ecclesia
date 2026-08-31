@@ -450,6 +450,8 @@ export interface ChurchActivity {
   is_recurring: boolean;
   recurrence_pattern?: string | null;
   contact_phone?: string | null;
+  track_attendance?: boolean;
+  event_id?: number | null;
   is_active: boolean;
   created_at: string;
 }

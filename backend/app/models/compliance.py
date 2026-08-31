@@ -31,7 +31,7 @@ class TaxReceipt(Base):
     currency: Mapped[str] = mapped_column(String(10), default="INR")
     financial_year: Mapped[str] = mapped_column(String(30), nullable=False)  # e.g., "2025-2026" or "TY 2026"
     issue_date: Mapped[date] = mapped_column(Date, default=date.today)
-    authorized_signatory: Mapped[str] = mapped_column(String(150), default="Pastor Dr. Samuel Thomas (Senior Pastor & Treasurer)")
+    authorized_signatory: Mapped[str] = mapped_column(String(150), default="Pastor Mr. John Doe (Senior Pastor & Treasurer)")
     church_tax_registration_no: Mapped[str] = mapped_column(String(100), default="CIT(E)/BLR/80G/2024-25/AABTE1234F")
     pdf_download_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

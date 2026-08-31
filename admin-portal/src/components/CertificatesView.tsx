@@ -55,7 +55,7 @@ export const CertificatesView: React.FC = () => {
   const [recipientName, setRecipientName] = useState<string>('');
   const [secondaryName, setSecondaryName] = useState<string>('');
   const [eventDate, setEventDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [officiantName, setOfficiantName] = useState<string>(defaultOrg?.senior_pastor || 'Pastor Dr. Samuel Thomas');
+  const [officiantName, setOfficiantName] = useState<string>(defaultOrg?.senior_pastor || "");
   const [witness1, setWitness1] = useState<string>('');
   const [witness2, setWitness2] = useState<string>('');
   const [memberId, setMemberId] = useState<number | undefined>(undefined);
@@ -515,7 +515,7 @@ export const CertificatesView: React.FC = () => {
                       className="form-input"
                       value={officiantName}
                       onChange={(e) => setOfficiantName(e.target.value)}
-                      placeholder="e.g. Pastor Dr. Samuel Thomas"
+                      placeholder="e.g. Pastor Mr. John Doe"
                     />
                   </div>
 

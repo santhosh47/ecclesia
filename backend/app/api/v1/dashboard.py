@@ -4,9 +4,9 @@ from datetime import date
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from app.api.v1.attendance import get_absentee_alerts
+from app.api.v1.attendance import _calculate_event_total_attendance, get_absentee_alerts
 from app.api.v1.finances import get_finance_summary
 from app.api.v1.members import get_upcoming_milestones
 from app.api.v1.pastoral import list_prayer_requests, list_visitor_follow_ups
@@ -36,12 +36,20 @@ def get_dashboard_stats(db: Session = Depends(get_db)) -> DashboardData:
     # Attendance average
     sunday_events = list(
         db.scalars(
-            select(Event).where(Event.event_type.ilike("%Sunday%")).order_by(Event.starts_at.desc()).limit(6)
-        )
+            select(Event)
+            .options(joinedload(Event.attendance_records))
+            .where(
+                (Event.event_type.ilike("%Sunday%")) |
+                (Event.event_type.ilike("%Worship%")) |
+                (Event.title.ilike("%Sunday%"))
+            )
+            .order_by(Event.starts_at.desc())
+            .limit(8)
+        ).unique()
     )
     avg_att = 0
     if sunday_events:
-        counts = [e.headcount_adults + e.headcount_children for e in sunday_events]
+        counts = [_calculate_event_total_attendance(e) for e in sunday_events]
         avg_att = sum(counts) // len(counts) if counts else 0
 
     # Upcoming milestones (next 30 days)

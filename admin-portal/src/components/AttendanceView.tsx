@@ -12,6 +12,7 @@ import {
   HeartHandshake,
   CalendarPlus,
   Check,
+  Download,
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useLocalization } from '../context/LocalizationContext';
@@ -21,6 +22,7 @@ interface AttendanceViewProps {
   events: Event[];
   members: Member[];
   isLoading: boolean;
+  initialEventId?: number | null;
   onOpenCheckInModal: () => void;
   onSelectMember: (memberId: number) => void;
   onRefreshEvents?: () => void;
@@ -30,12 +32,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   events,
   members,
   isLoading,
+  initialEventId,
   onOpenCheckInModal,
   onSelectMember,
   onRefreshEvents,
 }) => {
   const { hasPermission } = useLocalization();
-  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(initialEventId || null);
   const [eventRecords, setEventRecords] = useState<AttendanceRecord[]>([]);
   const [absenteeList, setAbsenteeList] = useState<AbsenteeAlertItem[]>([]);
   const [activeTab, setActiveTab] = useState<'checkin' | 'absentees'>('checkin');
@@ -43,14 +46,16 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [isCreatingQuickEvent, setIsCreatingQuickEvent] = useState(false);
 
   useEffect(() => {
-    if (events.length > 0) {
+    if (initialEventId && events.some((e) => e.id === initialEventId)) {
+      setSelectedEventId(initialEventId);
+    } else if (events.length > 0) {
       if (!selectedEventId || !events.some((e) => e.id === selectedEventId)) {
         setSelectedEventId(events[0].id);
       }
     } else {
       setSelectedEventId(null);
     }
-  }, [events]);
+  }, [events, initialEventId]);
 
   useEffect(() => {
     if (selectedEventId) {
@@ -74,7 +79,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       const endsAt = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 30).toISOString();
 
       const created = await api.createEvent({
-        title: 'Sunday Morning Worship & Communion',
+        title: 'Sunday Morning Worship Service',
         event_type: 'Worship Service',
         location: 'Main Sanctuary',
         starts_at: startsAt,
@@ -121,6 +126,15 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     }
   };
 
+  const handleExportCsv = () => {
+    const url = api.getExportAttendanceCsvUrl({ event_id: selectedEventId || undefined });
+    window.open(url, '_blank');
+  };
+
+  const rosterPresentCount = eventRecords.filter((r) => r.status === 'Present' || r.status === 'Late').length;
+  const physicalHeadcount = selectedEvent ? (selectedEvent.headcount_adults || 0) + (selectedEvent.headcount_children || 0) : 0;
+  const calculatedTotalAttendance = selectedEvent ? Math.max(physicalHeadcount, rosterPresentCount) + (selectedEvent.headcount_online || 0) : 0;
+
   return (
     <div>
       {/* Header */}
@@ -133,12 +147,23 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             Headcount logging, roster check-ins, and automated 3-week pastoral absentee alerts
           </p>
         </div>
-        {hasPermission('manage_attendance') && (
-          <button className="btn btn-primary" onClick={onOpenCheckInModal}>
-            <Plus size={16} />
-            <span>New Service / Event</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleExportCsv}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            title="Download CSV report of attendance records"
+          >
+            <Download size={16} />
+            <span>Export CSV</span>
           </button>
-        )}
+          {hasPermission('manage_attendance') && (
+            <button className="btn btn-primary" onClick={onOpenCheckInModal}>
+              <Plus size={16} />
+              <span>New Service / Event</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -214,7 +239,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                     <div style={{ textAlign: 'center', paddingLeft: '16px', borderLeft: '1px solid var(--border-subtle)' }}>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Attendance</div>
                       <div style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                        {selectedEvent.total_headcount ?? (selectedEvent.headcount_adults + selectedEvent.headcount_children + (selectedEvent.headcount_online || 0))}
+                        {calculatedTotalAttendance}
                       </div>
                     </div>
                   </div>

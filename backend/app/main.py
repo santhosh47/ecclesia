@@ -83,6 +83,12 @@ def health_check() -> dict[str, str]:
     return {"status": "ok"}
 
 
+uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+(uploads_dir / "avatars").mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+
+
 dist_path = get_frontend_dist_path()
 if dist_path:
     assets_dir = dist_path / "assets"
@@ -92,8 +98,8 @@ if dist_path:
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
         """Serve static files or fallback to React index.html for client-side routing."""
-        # Never intercept API or documentation routes
-        if full_path.startswith("api/") or full_path in {"docs", "openapi.json", "redoc"}:
+        # Never intercept API, uploads, or documentation routes
+        if full_path.startswith("api/") or full_path.startswith("uploads/") or full_path in {"docs", "openapi.json", "redoc"}:
             raise HTTPException(status_code=404, detail="Not Found")
 
         target_file = dist_path / full_path
