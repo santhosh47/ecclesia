@@ -8,8 +8,11 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database.session import get_db
 from app.models.member import Member
+from app.models.notifications import InAppNotification
 from app.models.pastoral import PastoralCareNote, PrayerRequest, VisitorFollowUp
 from app.schemas.pastoral import (
+    AnswerPrayerPayload,
+    AnsweredPrayerStats,
     PastoralCareNoteCreate,
     PastoralCareNoteRead,
     PrayerRequestCreate,
@@ -120,6 +123,120 @@ def list_prayer_requests(
 def create_prayer_request(payload: PrayerRequestCreate, db: Session = Depends(get_db)) -> PrayerRequestRead:
     prayer = PrayerRequest(**payload.model_dump())
     db.add(prayer)
+    db.commit()
+    db.refresh(prayer)
+    return PrayerRequestRead.model_validate(prayer)
+
+
+@router.get("/prayers/answered", response_model=list[PrayerRequestRead], summary="List Answered Prayers & Testimonies")
+def list_answered_prayers(
+    category: str | None = None,
+    search: str | None = None,
+    public_only: bool = False,
+    db: Session = Depends(get_db),
+) -> list[PrayerRequestRead]:
+    """Retrieve all answered prayers and praise reports for the testimony wall."""
+    query = (
+        select(PrayerRequest)
+        .where(PrayerRequest.status == "Answered")
+        .order_by(PrayerRequest.date_answered.desc().nullslast(), PrayerRequest.id.desc())
+    )
+    if public_only:
+        query = query.where(PrayerRequest.is_confidential.is_(False))
+    if category:
+        query = query.where(PrayerRequest.category == category)
+    if search:
+        search_fmt = f"%{search.strip()}%"
+        query = query.where(
+            (PrayerRequest.title.ilike(search_fmt))
+            | (PrayerRequest.details.ilike(search_fmt))
+            | (PrayerRequest.answer_notes.ilike(search_fmt))
+            | (PrayerRequest.requester_name.ilike(search_fmt))
+        )
+
+    prayers = list(db.scalars(query))
+    return [PrayerRequestRead.model_validate(p) for p in prayers]
+
+
+@router.get("/prayers/stats", response_model=AnsweredPrayerStats, summary="Prayer Request and Answer Statistics")
+def get_prayer_stats(db: Session = Depends(get_db)) -> AnsweredPrayerStats:
+    """Retrieve prayer aggregate metrics, answered prayer count, and praise reports."""
+    all_prayers = list(db.scalars(select(PrayerRequest)))
+    total_prayers = len(all_prayers)
+    answered = [p for p in all_prayers if p.status == "Answered"]
+    active = [p for p in all_prayers if p.status == "Active"]
+    archived = [p for p in all_prayers if p.status == "Archived"]
+
+    answered_count = len(answered)
+    active_count = len(active)
+    archived_count = len(archived)
+
+    resolved = answered_count + archived_count
+    answer_rate = round((answered_count / resolved * 100), 1) if resolved > 0 else (100.0 if answered_count > 0 else 0.0)
+
+    # Average days to answer
+    days_list = []
+    for p in answered:
+        if p.date_answered and p.date_requested:
+            diff = (p.date_answered - p.date_requested).days
+            if diff >= 0:
+                days_list.append(diff)
+
+    avg_days = round(sum(days_list) / len(days_list), 1) if days_list else None
+
+    # By category for answered
+    by_category: dict[str, int] = {}
+    for p in answered:
+        cat = p.category or "Other"
+        by_category[cat] = by_category.get(cat, 0) + 1
+
+    # Recent answered testimonies
+    recent_answered = sorted(
+        answered,
+        key=lambda x: (x.date_answered or date.min, x.id),
+        reverse=True,
+    )[:5]
+
+    return AnsweredPrayerStats(
+        total_prayers=total_prayers,
+        answered_count=answered_count,
+        active_count=active_count,
+        archived_count=archived_count,
+        answer_rate_percent=answer_rate,
+        average_days_to_answer=avg_days,
+        by_category=by_category,
+        recent_testimonies=[PrayerRequestRead.model_validate(p) for p in recent_answered],
+    )
+
+
+@router.post("/prayers/{prayer_id}/answer", response_model=PrayerRequestRead, summary="Record Answered Prayer & Praise Report")
+def answer_prayer_request(
+    prayer_id: int,
+    payload: AnswerPrayerPayload,
+    db: Session = Depends(get_db),
+) -> PrayerRequestRead:
+    """Record an answered prayer, testimonial notes, and trigger celebration notifications."""
+    prayer = db.get(PrayerRequest, prayer_id)
+    if not prayer:
+        raise HTTPException(status_code=404, detail="Prayer request not found")
+
+    prayer.status = "Answered"
+    prayer.answer_notes = payload.answer_notes
+    prayer.date_answered = payload.date_answered or date.today()
+    if payload.is_confidential is not None:
+        prayer.is_confidential = payload.is_confidential
+
+    # Create an in-app celebration notice for pastoral team
+    celebration_note = InAppNotification(
+        title=f"Praise Report: Prayer Answered for {prayer.requester_name}",
+        message=f"'{prayer.title}': {payload.answer_notes[:180]}...",
+        notification_type="answered_prayer",
+        target_role="pastor",
+        channels_dispatched="in_app",
+        action_url="/pastoral?tab=answered",
+    )
+    db.add(celebration_note)
+
     db.commit()
     db.refresh(prayer)
     return PrayerRequestRead.model_validate(prayer)

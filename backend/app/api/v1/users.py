@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.core.security import get_current_user, require_role
 from app.database.session import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRead, UserUpdate
@@ -19,14 +20,21 @@ def get_user_or_404(user_id: int, db: Session) -> User:
 
 
 @router.get("", response_model=list[UserRead])
-def list_users(db: Session = Depends(get_db)) -> list[UserRead]:
+def list_users(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[UserRead]:
     """List all registered system users and their assigned roles."""
     users = list(db.scalars(select(User).order_by(User.id)).all())
     return [UserRead.model_validate(u) for u in users]
 
 
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> UserRead:
+def create_user(
+    payload: UserCreate,
+    current_user: User = Depends(require_role("super_admin", "admin")),
+    db: Session = Depends(get_db),
+) -> UserRead:
     """Create a new staff or leader user login with an assigned role."""
     existing = db.scalar(
         select(User).where(
@@ -57,13 +65,22 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> UserRead:
 
 
 @router.get("/{user_id}", response_model=UserRead)
-def get_user(user_id: int, db: Session = Depends(get_db)) -> UserRead:
+def get_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserRead:
     """Get single user account details."""
     return UserRead.model_validate(get_user_or_404(user_id, db))
 
 
 @router.patch("/{user_id}", response_model=UserRead)
-def update_user(user_id: int, payload: UserUpdate, db: Session = Depends(get_db)) -> UserRead:
+def update_user(
+    user_id: int,
+    payload: UserUpdate,
+    current_user: User = Depends(require_role("super_admin", "admin")),
+    db: Session = Depends(get_db),
+) -> UserRead:
     """Update user profile, assigned role, active status, or reset password."""
     user = get_user_or_404(user_id, db)
 
@@ -84,7 +101,11 @@ def update_user(user_id: int, payload: UserUpdate, db: Session = Depends(get_db)
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, db: Session = Depends(get_db)) -> None:
+def delete_user(
+    user_id: int,
+    current_user: User = Depends(require_role("super_admin", "admin")),
+    db: Session = Depends(get_db),
+) -> None:
     """Delete a user account."""
     user = get_user_or_404(user_id, db)
     # Prevent deleting the last super_admin

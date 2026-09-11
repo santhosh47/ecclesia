@@ -1,6 +1,7 @@
 """SQLAlchemy master models exporter."""
 
 from app.models.attendance import AttendanceRecord
+from app.models.audit_log import AuditLog
 from app.models.certificates import CertificateTemplate, IssuedCertificate
 from app.models.church_activity import ChurchActivity
 from app.models.church_setting import ChurchSetting
@@ -13,9 +14,11 @@ from app.models.member import Member
 from app.models.messaging import MessageBroadcast, MessageLog, MessageTemplate
 from app.models.ministry import MemberMinistry, Ministry
 from app.models.pastoral import PastoralCareNote, PrayerRequest, VisitorFollowUp
+from app.models.notifications import InAppNotification, NotificationRule
 from app.models.user import User
 
 __all__ = [
+    "AuditLog",
     "User",
     "Member",
     "Household",
@@ -44,4 +47,6 @@ __all__ = [
     "FCRALog",
     "ChurchActivity",
     "ChurchSetting",
+    "NotificationRule",
+    "InAppNotification",
 ]

@@ -768,3 +768,108 @@ export interface UserUpdatePayload {
   password?: string;
 }
 
+export interface AuditLog {
+  id: number;
+  timestamp: string;
+  user_id?: number | null;
+  username: string;
+  user_role?: string | null;
+  action: string;
+  entity_type: string;
+  entity_id?: string | null;
+  details?: string | null;
+  ip_address?: string | null;
+}
+
+export interface BackupMetadata {
+  filename: string;
+  size_bytes: number;
+  created_at: string;
+  path?: string | null;
+}
+
+export interface BackupListResponse {
+  items: BackupMetadata[];
+  total: number;
+}
+
+// --- Calendar & Subscriptions ---
+export interface CalendarSubscriptionLinks {
+  webcal_url: string;
+  google_calendar_url: string;
+  ics_download_url: string;
+  church_name: string;
+}
+
+// --- Notification Rules & Automated Alerts ---
+export interface NotificationRule {
+  id: number;
+  name: string;
+  event_type: string;
+  is_active: boolean;
+  threshold_value: number;
+  channels: string; // e.g., "in_app,email,whatsapp"
+  target_roles: string; // e.g., "pastor,admin,super_admin"
+  message_template: string;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface NotificationRuleCreatePayload {
+  name: string;
+  event_type?: string;
+  is_active?: boolean;
+  threshold_value?: number;
+  channels?: string;
+  target_roles?: string;
+  message_template?: string;
+}
+
+export interface NotificationRuleUpdatePayload {
+  name?: string;
+  is_active?: boolean;
+  threshold_value?: number;
+  channels?: string;
+  target_roles?: string;
+  message_template?: string;
+}
+
+export interface InAppNotification {
+  id: number;
+  user_id?: number | null;
+  target_role: string;
+  title: string;
+  message: string;
+  notification_type: string;
+  channels_dispatched: string;
+  is_read: boolean;
+  action_url?: string | null;
+  created_at: string;
+}
+
+export interface EvaluateTriggersResult {
+  status: string;
+  rules_evaluated: number;
+  triggered_members_count: number;
+  in_app_notifications_created: number;
+  details: string[];
+}
+
+// --- Answered Prayers & Testimony Wall ---
+export interface AnswerPrayerPayload {
+  answer_notes: string;
+  date_answered?: string | null;
+  is_confidential?: boolean | null;
+}
+
+export interface AnsweredPrayerStats {
+  total_prayers: number;
+  answered_count: number;
+  active_count: number;
+  archived_count: number;
+  answer_rate_percent: number;
+  average_days_to_answer?: number | null;
+  by_category: Record<string, number>;
+  recent_testimonies: PrayerRequest[];
+}
+

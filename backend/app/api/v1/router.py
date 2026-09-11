@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.attendance import router as attendance_router
+from app.api.v1.audit_logs import router as audit_logs_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.certificates import router as certificates_router
 from app.api.v1.church_calendar import router as church_calendar_router
@@ -18,16 +19,20 @@ from app.api.v1.localization import router as localization_router
 from app.api.v1.members import router as members_router
 from app.api.v1.messaging import router as messaging_router
 from app.api.v1.ministries import router as ministries_router
+from app.api.v1.notifications import router as notifications_router
 from app.api.v1.pastoral import router as pastoral_router
 from app.api.v1.seed import router as seed_router
+from app.api.v1.system import router as system_router
 from app.api.v1.users import router as users_router
 
 api_router = APIRouter()
 
 # System, Auth & Health
 api_router.include_router(health_router)
+api_router.include_router(system_router)
 api_router.include_router(auth_router)
 api_router.include_router(users_router)
+api_router.include_router(audit_logs_router)
 api_router.include_router(seed_router)
 api_router.include_router(localization_router)
 
@@ -47,6 +52,7 @@ api_router.include_router(compliance_router)
 api_router.include_router(pastoral_router)
 api_router.include_router(certificates_router)
 api_router.include_router(messaging_router)
+api_router.include_router(notifications_router)
 
 # Church Activities Calendar & Attendance
 api_router.include_router(church_calendar_router)

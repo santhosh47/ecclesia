@@ -62,6 +62,27 @@ class PrayerRequestRead(PrayerRequestBase):
     created_at: dt_datetime
 
 
+class AnswerPrayerPayload(BaseModel):
+    """Payload to record an answered prayer and optional testimony."""
+
+    answer_notes: str = Field(min_length=1, description="Testimony or details of how God answered this prayer")
+    date_answered: dt_date | None = Field(default=None, description="Date answered; defaults to today")
+    is_confidential: bool | None = Field(default=None, description="Whether this remains confidential or can be shared")
+
+
+class AnsweredPrayerStats(BaseModel):
+    """Summary metrics of church prayer requests and answered praise reports."""
+
+    total_prayers: int
+    answered_count: int
+    active_count: int
+    archived_count: int
+    answer_rate_percent: float
+    average_days_to_answer: float | None = None
+    by_category: dict[str, int]
+    recent_testimonies: list[PrayerRequestRead]
+
+
 # --- Visitor Follow-Ups ---
 class VisitorFollowUpBase(BaseModel):
     visitor_name: str = Field(min_length=1, max_length=150)

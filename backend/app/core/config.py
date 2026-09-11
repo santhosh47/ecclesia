@@ -16,7 +16,11 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./ecclesia.db"
     cors_origins: str = "http://localhost:5173"
     jwt_secret_key: str | None = None
+    secret_key: str = "ecclesia-production-super-secret-key-change-in-env-2026"
+    access_token_expire_minutes: int = 480
     default_localization_mode: str = "IN"  # "IN" or "GLOBAL"
+    log_level: str = "INFO"
+    log_file: str = "logs/ecclesia.log"
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"

@@ -33,12 +33,25 @@ settings = get_settings()
 db_url = get_normalized_database_url(settings.database_url)
 connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {}
 
-engine = create_engine(
-    db_url,
-    connect_args=connect_args,
-    pool_pre_ping=True,
-)
+engine_kwargs: dict = {
+    "connect_args": connect_args,
+    "pool_pre_ping": True,
+}
+
+if not db_url.startswith("sqlite"):
+    engine_kwargs.update({
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_recycle": 1800,
+    })
+
+engine = create_engine(db_url, **engine_kwargs)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+def dispose_engine() -> None:
+    """Explicitly dispose of the SQLAlchemy engine and all active pool connections."""
+    engine.dispose()
 
 
 def get_db() -> Generator[Session, None, None]:

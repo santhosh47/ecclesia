@@ -3,6 +3,9 @@ import {
   Account,
   AttendanceRecord,
   AttendanceSummary,
+  AuditLog,
+  BackupListResponse,
+  BackupMetadata,
   CertificateTemplate,
   ChurchActivity,
   ChurchProfile,
@@ -41,12 +44,23 @@ import {
   UserUpdatePayload,
   VisitorFollowUp,
   AuthResponse,
+  CalendarSubscriptionLinks,
+  NotificationRule,
+  NotificationRuleCreatePayload,
+  NotificationRuleUpdatePayload,
+  InAppNotification,
+  EvaluateTriggersResult,
+  AnswerPrayerPayload,
+  AnsweredPrayerStats,
 } from '../types';
+
+import { logger } from '../utils/logger';
 
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api/v1' : 'http://localhost:8000/api/v1');
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`;
+  const method = options?.method || 'GET';
   const token = localStorage.getItem('ecclesia_auth_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -54,27 +68,39 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...(options?.headers as Record<string, string>),
   };
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  logger.debug(`[API Request] ${method} ${path}`, 'APIClient');
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
-  if (!response.ok) {
-    let errorDetail = 'An error occurred while communicating with the server.';
-    try {
-      const errorJson = await response.json();
-      if (errorJson.detail) errorDetail = errorJson.detail;
-    } catch {
-      // Ignore fallback
+    if (!response.ok) {
+      let errorDetail = 'An error occurred while communicating with the server.';
+      try {
+        const errorJson = await response.json();
+        if (errorJson.detail) errorDetail = errorJson.detail;
+      } catch {
+        // Ignore fallback
+      }
+      logger.error(`[API Error] ${method} ${path} -> ${response.status}: ${errorDetail}`, 'APIClient');
+      throw new Error(errorDetail);
     }
-    throw new Error(errorDetail);
-  }
 
-  if (response.status === 204) {
-    return {} as T;
-  }
+    if (response.status === 204) {
+      logger.debug(`[API Response] ${method} ${path} -> 204 No Content`, 'APIClient');
+      return {} as T;
+    }
 
-  return response.json() as Promise<T>;
+    const data = await response.json() as T;
+    logger.debug(`[API Response] ${method} ${path} -> ${response.status}`, 'APIClient');
+    return data;
+  } catch (err) {
+    if (!(err instanceof Error && err.message.includes('API Error'))) {
+      logger.error(`[API Network Error] ${method} ${path}: ${err}`, 'APIClient', err);
+    }
+    throw err;
+  }
 }
 
 export const api = {
@@ -291,6 +317,23 @@ export const api = {
     }),
   deleteChurchActivity: (id: number) =>
     request<void>(`/church-calendar/activities/${id}`, { method: 'DELETE' }),
+  getCalendarSubscriptionLinks: () =>
+    request<CalendarSubscriptionLinks>('/church-calendar/subscription-links'),
+  getActivityGoogleCalendarUrl: (activityId: number) =>
+    request<{ activity_id: number; title: string; google_calendar_url: string }>(
+      `/church-calendar/activities/${activityId}/google-calendar-url`
+    ),
+  downloadCalendarIcs: (category?: string): void => {
+    const query = category && category !== 'All' ? `?category=${encodeURIComponent(category)}` : '';
+    const token = localStorage.getItem('ecclesia_auth_token');
+    const url = `${API_BASE}/church-calendar/export.ics${query}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'church_calendar.ics');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
 
   // Milestone Certificates
   getCertificateTemplates: () => request<CertificateTemplate[]>('/certificates/templates'),
@@ -599,6 +642,20 @@ export const api = {
       body: JSON.stringify(data),
     }),
   deletePrayerRequest: (id: number) => request<void>(`/pastoral/prayers/${id}`, { method: 'DELETE' }),
+  getAnsweredPrayers: (params?: { category?: string; search?: string; public_only?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.category && params.category !== 'All') query.append('category', params.category);
+    if (params?.search) query.append('search', params.search);
+    if (params?.public_only !== undefined) query.append('public_only', String(params.public_only));
+    const qs = query.toString();
+    return request<PrayerRequest[]>(`/pastoral/prayers/answered${qs ? `?${qs}` : ''}`);
+  },
+  getPrayerStats: () => request<AnsweredPrayerStats>('/pastoral/prayers/stats'),
+  answerPrayerRequest: (id: number, payload: AnswerPrayerPayload) =>
+    request<PrayerRequest>(`/pastoral/prayers/${id}/answer`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   getVisitorFollowUps: () => request<VisitorFollowUp[]>('/pastoral/visitors'),
   createVisitorFollowUp: (data: Partial<VisitorFollowUp>) =>
     request<VisitorFollowUp>('/pastoral/visitors', {
@@ -637,4 +694,79 @@ export const api = {
 
   // System Seed
   seedDatabase: () => request<{ status: string; message: string }>('/seed', { method: 'POST' }),
+
+  // Audit Logs
+  getAuditLogs: (params?: { action?: string; entity_type?: string; search?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.action) query.set('action', params.action);
+    if (params?.entity_type) query.set('entity_type', params.entity_type);
+    if (params?.search) query.set('search', params.search);
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    const qs = query.toString();
+    return request<AuditLog[]>(`/audit-logs${qs ? `?${qs}` : ''}`);
+  },
+
+  // System Health & Database Backups
+  getSystemHealth: () =>
+    request<{ status: string; database: string; version: string }>('/health'),
+
+  getBackups: () =>
+    request<BackupListResponse>('/system/backups'),
+
+  createBackup: () =>
+    request<{ message: string; backup: BackupMetadata }>('/system/backup', {
+      method: 'POST',
+    }),
+
+  deleteBackup: (filename: string) =>
+    request<{ message: string }>(`/system/backups/${encodeURIComponent(filename)}`, {
+      method: 'DELETE',
+    }),
+
+  downloadBackup: async (filename: string): Promise<void> => {
+    const url = `${API_BASE}/system/backups/${encodeURIComponent(filename)}/download`;
+    const token = localStorage.getItem('ecclesia_auth_token');
+    const res = await fetch(url, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to download backup snapshot (${res.status} ${res.statusText})`);
+    }
+
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  },
+
+  // Automated Alerts & Notifications Engine
+  getNotificationRules: () => request<NotificationRule[]>('/notifications/rules'),
+  createNotificationRule: (payload: NotificationRuleCreatePayload) =>
+    request<NotificationRule>('/notifications/rules', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateNotificationRule: (id: number, payload: NotificationRuleUpdatePayload) =>
+    request<NotificationRule>(`/notifications/rules/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  evaluateNotificationTriggers: () =>
+    request<EvaluateTriggersResult>('/notifications/evaluate-triggers', { method: 'POST' }),
+  getInboxNotifications: (limit: number = 50) =>
+    request<InAppNotification[]>(`/notifications/inbox?limit=${limit}`),
+  markNotificationRead: (id: number) =>
+    request<InAppNotification>(`/notifications/${id}/read`, { method: 'POST' }),
+  markAllNotificationsRead: () =>
+    request<{ marked_read: number }>('/notifications/mark-all-read', { method: 'POST' }),
 };
+

@@ -9,19 +9,24 @@ import {
   Plus,
   Scale,
   ShieldCheck,
+  ClipboardCheck,
   X,
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useLocalization } from '../context/LocalizationContext';
-import { FCRALog, Form10BDExportReport, TaxReceipt, UKGiftAidClaimReport } from '../types';
+import { AuditLog, FCRALog, Form10BDExportReport, TaxReceipt, UKGiftAidClaimReport } from '../types';
 
 export const ComplianceView: React.FC = () => {
   const { formatCurrency, isIndia, mode, hasPermission } = useLocalization();
-  const [activeTab, setActiveTab] = useState<'receipts' | 'form10bd' | 'fcra' | 'giftaid'>('receipts');
+  const [activeTab, setActiveTab] = useState<'receipts' | 'form10bd' | 'fcra' | 'giftaid' | 'audit'>('receipts');
   const [receipts, setReceipts] = useState<TaxReceipt[]>([]);
   const [form10BD, setForm10BD] = useState<Form10BDExportReport | null>(null);
   const [fcraLogs, setFcraLogs] = useState<FCRALog[]>([]);
   const [giftAidReport, setGiftAidReport] = useState<UKGiftAidClaimReport | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditActionFilter, setAuditActionFilter] = useState<string>('');
+  const [auditSearch, setAuditSearch] = useState<string>('');
+  const [loadingAudit, setLoadingAudit] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [financialYear, setFinancialYear] = useState<string>('2025-2026');
 
@@ -62,9 +67,31 @@ export const ComplianceView: React.FC = () => {
     }
   };
 
+  const loadAuditLogs = async () => {
+    try {
+      setLoadingAudit(true);
+      const logs = await api.getAuditLogs({
+        action: auditActionFilter || undefined,
+        search: auditSearch || undefined,
+        limit: 100,
+      });
+      setAuditLogs(logs);
+    } catch (err) {
+      console.error('Failed to load audit logs:', err);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [financialYear, isIndia]);
+
+  useEffect(() => {
+    if (activeTab === 'audit') {
+      loadAuditLogs();
+    }
+  }, [activeTab, auditActionFilter, auditSearch]);
 
   const handleGenerateReceipt = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,6 +249,25 @@ export const ComplianceView: React.FC = () => {
             <span>UK Gift Aid 25% Claims</span>
           </button>
         )}
+        <button
+          onClick={() => setActiveTab('audit')}
+          className="btn"
+          style={{
+            background: activeTab === 'audit' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'audit' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'audit' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <ClipboardCheck size={16} />
+          <span>Audit Trail & Activity Logs ({auditLogs.length})</span>
+        </button>
       </div>
 
       {/* Tab 1: Tax Receipts Table */}
@@ -483,6 +529,141 @@ export const ComplianceView: React.FC = () => {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 5: Audit Trail & Activity Logs */}
+      {activeTab === 'audit' && (
+        <div className="card" style={{ padding: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Immutable Audit Trail & System Activity ({auditLogs.length})
+              </h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Statutory audit ledger capturing member, financial, compliance, and user security events.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <select
+                value={auditActionFilter}
+                onChange={(e) => setAuditActionFilter(e.target.value)}
+                className="form-select"
+                style={{ width: 'auto', padding: '6px 12px', fontSize: '12.5px' }}
+              >
+                <option value="">All Actions</option>
+                <option value="CREATE">CREATE</option>
+                <option value="UPDATE">UPDATE</option>
+                <option value="DELETE">DELETE</option>
+                <option value="LOGIN">LOGIN</option>
+                <option value="LOGIN_FAILED">LOGIN_FAILED</option>
+                <option value="EXPORT">EXPORT</option>
+              </select>
+              <input
+                type="text"
+                placeholder="Search actor, entity, details..."
+                value={auditSearch}
+                onChange={(e) => setAuditSearch(e.target.value)}
+                className="form-input"
+                style={{ width: '220px', padding: '6px 12px', fontSize: '12.5px' }}
+              />
+              <button
+                onClick={loadAuditLogs}
+                className="btn btn-secondary"
+                style={{ padding: '6px 12px', fontSize: '12.5px' }}
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Actor</th>
+                  <th>Action</th>
+                  <th>Entity</th>
+                  <th>Change Summary</th>
+                  <th>Client IP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingAudit ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      Loading audit ledger records...
+                    </td>
+                  </tr>
+                ) : auditLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      No audit records found matching criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  auditLogs.map((log) => {
+                    const actionColors: Record<string, { bg: string; text: string }> = {
+                      CREATE: { bg: 'rgba(16, 185, 129, 0.15)', text: '#34d399' },
+                      UPDATE: { bg: 'rgba(59, 130, 246, 0.15)', text: '#60a5fa' },
+                      DELETE: { bg: 'rgba(239, 68, 68, 0.15)', text: '#f87171' },
+                      LOGIN: { bg: 'rgba(168, 85, 247, 0.15)', text: '#c084fc' },
+                      LOGIN_FAILED: { bg: 'rgba(239, 68, 68, 0.2)', text: '#fca5a5' },
+                      EXPORT: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24' },
+                    };
+                    const color = actionColors[log.action] || { bg: 'rgba(148, 163, 184, 0.15)', text: '#94a3b8' };
+
+                    return (
+                      <tr key={log.id}>
+                        <td style={{ whiteSpace: 'nowrap', fontSize: '12px' }}>
+                          <span className="cell-mono">{new Date(log.timestamp).toLocaleString()}</span>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{log.username}</div>
+                          {log.user_role && (
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{log.user_role}</span>
+                          )}
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              fontFamily: 'monospace',
+                              backgroundColor: color.bg,
+                              color: color.text,
+                            }}
+                          >
+                            {log.action}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{log.entity_type}</span>
+                          {log.entity_id && (
+                            <span className="cell-mono" style={{ marginLeft: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                              #{log.entity_id}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                          {log.details || '—'}
+                        </td>
+                        <td>
+                          <span className="cell-mono" style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                            {log.ip_address || '—'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

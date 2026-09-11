@@ -1,0 +1,96 @@
+name: Ecclesia Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-test:
+    name: Backend Test Suite (Pytest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run Pytest Suite
+        working-directory: ./backend
+        run: |
+          pytest tests --verbose
+
+  frontend-build:
+    name: Frontend Build & Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: admin-portal/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: ./admin-portal
+        run: npm ci
+
+      - name: Run TypeScript Check & Vite Production Build
+        working-directory: ./admin-portal
+        run: npm run build
+
+  e2e-smoke:
+    name: Playwright E2E Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Backend Dependencies & Start Server
+        run: |
+          pip install -r backend/requirements.txt
+          cd backend && uvicorn app.main:app --port 8000 &
+          sleep 3
+
+      - name: Install Frontend Dependencies & Start Dev Server
+        working-directory: ./admin-portal
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run dev -- --host 127.0.0.1 --port 5173 &
+          sleep 4
+
+      - name: Run Playwright Desktop Suite
+        working-directory: ./admin-portal
+        run: npm run test:e2e:desktop
+
+      - name: Run Playwright Mobile Suite
+        working-directory: ./admin-portal
+        run: npm run test:e2e:mobile

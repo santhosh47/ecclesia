@@ -8,7 +8,9 @@ def test_health_check() -> None:
     with TestClient(app) as client:
         response = client.get("/api/v1/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data.get("database") == "connected"
 
 
 def test_church_seed_and_dashboard() -> None:

@@ -8,6 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.calendar_export import (
+    generate_google_calendar_subscribe_url,
+    generate_google_calendar_url,
+    generate_ical_feed,
+)
 from app.database.session import get_db
 from app.models.church_activity import ChurchActivity
 from app.models.event import Event
@@ -203,3 +208,89 @@ def export_church_activities_to_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/export.ics", summary="Download Church Calendar iCalendar (.ics) File")
+def export_church_calendar_ics(
+    category: str | None = None,
+    activity_type: str | None = None,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Export church activities and services to a standard RFC 5545 iCalendar (.ics) file."""
+    query = select(ChurchActivity).where(ChurchActivity.is_active.is_(True)).order_by(ChurchActivity.starts_at.asc())
+    if category and category != "All":
+        query = query.where(ChurchActivity.category == category)
+    if activity_type and activity_type != "All":
+        query = query.where(ChurchActivity.activity_type == activity_type)
+
+    activities = list(db.scalars(query))
+    ical_content = generate_ical_feed(activities)
+    filename = f"ecclesia_church_calendar_{date.today().strftime('%Y%m%d')}.ics"
+
+    return Response(
+        content=ical_content,
+        media_type="text/calendar; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+    )
+
+
+@router.get("/feed.ics", summary="Live Church Calendar WebCal Subscription Feed")
+def church_calendar_webcal_feed(
+    db: Session = Depends(get_db),
+) -> Response:
+    """Public/subscriber live iCalendar feed for Google Calendar, Apple Calendar, and Outlook."""
+    query = select(ChurchActivity).where(ChurchActivity.is_active.is_(True)).order_by(ChurchActivity.starts_at.asc())
+    activities = list(db.scalars(query))
+    ical_content = generate_ical_feed(
+        activities,
+        calendar_name="Ecclesia Church Calendar",
+        description="Official calendar of services, prayer vigils, Bible studies, and church events.",
+    )
+
+    return Response(
+        content=ical_content,
+        media_type="text/calendar; charset=utf-8",
+        headers={
+            "Content-Type": "text/calendar; charset=utf-8",
+            "Cache-Control": "public, max-age=1800",  # Cache for 30 minutes
+        },
+    )
+
+
+@router.get("/activities/{activity_id}/google-calendar-url", summary="Get 1-Click Google Calendar URL")
+def get_activity_google_calendar_url(
+    activity_id: int,
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    """Generate a 1-click Google Calendar addition link for a specific church activity."""
+    activity = db.get(ChurchActivity, activity_id)
+    if not activity:
+        raise HTTPException(status_code=404, detail="Church activity not found")
+
+    url = generate_google_calendar_url(
+        title=activity.title,
+        starts_at=activity.starts_at,
+        ends_at=activity.ends_at,
+        details=activity.description,
+        location=activity.location,
+    )
+    return {"google_calendar_url": url, "title": activity.title}
+
+
+@router.get("/subscription-links", summary="Get Calendar Subscription URLs")
+def get_calendar_subscription_links() -> dict[str, str]:
+    """Retrieve personal and public calendar subscription links for Google Calendar, Apple Calendar, and Outlook."""
+    # Build standard relative paths
+    feed_path = "/api/v1/church-calendar/feed.ics"
+    google_sub_url = generate_google_calendar_subscribe_url(f"http://localhost:8000{feed_path}")
+
+    return {
+        "ics_download_url": "/api/v1/church-calendar/export.ics",
+        "webcal_feed_url": f"webcal://localhost:8000{feed_path}",
+        "http_feed_url": f"http://localhost:8000{feed_path}",
+        "google_calendar_subscribe_url": google_sub_url,
+    }
+

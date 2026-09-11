@@ -1,10 +1,27 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate, Routes, Route, Navigate } from 'react-router-dom';
 import { api } from './api/client';
+import {
+  useDashboardData,
+  useMembers,
+  useHouseholds,
+  useMinistries,
+  useEvents,
+  useFinances,
+  invalidateDashboard,
+  invalidateMembers,
+  invalidateHouseholds,
+  invalidateMinistries,
+  invalidateEvents,
+  invalidateFinances,
+  invalidateAllQueries,
+} from './api/queries';
 import { AttendanceView } from './components/AttendanceView';
 import { CertificatesView } from './components/CertificatesView';
 import { ChurchCalendarView } from './components/ChurchCalendarView';
 import { ComplianceView } from './components/ComplianceView';
 import { DashboardView } from './components/DashboardView';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { FinancesView } from './components/FinancesView';
 import { HouseholdsView } from './components/HouseholdsView';
 import { ImportantDatesView } from './components/ImportantDatesView';
@@ -30,40 +47,84 @@ import { NavSection, Sidebar } from './components/Sidebar';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LocalizationProvider, useLocalization } from './context/LocalizationContext';
 import {
-  Contribution,
-  DashboardData,
   Event,
-  Expense,
-  FinanceSummary,
   Household,
   Member,
   MemberDetail,
-  Ministry,
-  PledgeCampaign,
 } from './types';
 
 function AppContent() {
   const { user, activeRole } = useAuth();
   const { setCurrentRole } = useLocalization();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const [activeSection, setActiveSection] = useState<NavSection>('dashboard');
+  // Map pathname to NavSection
+  const getActiveSectionFromPath = (pathname: string): NavSection => {
+    const segment = pathname.replace(/^\//, '').split('/')[0];
+    const validSections: NavSection[] = [
+      'dashboard',
+      'members',
+      'milestones',
+      'households',
+      'calendar',
+      'attendance',
+      'ministries',
+      'pastoral',
+      'ledger',
+      'finances',
+      'compliance',
+      'certificates',
+      'messaging',
+      'settings',
+    ];
+    if (validSections.includes(segment as NavSection)) {
+      return segment as NavSection;
+    }
+    return 'dashboard';
+  };
+
+  const activeSection = getActiveSectionFromPath(location.pathname);
+
+  const handleNavigate = (section: NavSection) => {
+    if (section === 'dashboard') {
+      navigate('/');
+    } else {
+      navigate(`/${section}`);
+    }
+    setMobileMenuOpen(false);
+  };
+
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Data states
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [households, setHouseholds] = useState<Household[]>([]);
-  const [ministries, setMinistries] = useState<Ministry[]>([]);
-  const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null);
-  const [contributions, setContributions] = useState<Contribution[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [campaigns, setCampaigns] = useState<PledgeCampaign[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  // TanStack Query server-state data
+  const dashboardQuery = useDashboardData();
+  const membersQuery = useMembers();
+  const householdsQuery = useHouseholds();
+  const ministriesQuery = useMinistries();
+  const eventsQuery = useEvents();
+  const finances = useFinances();
 
-  // Loading and seeding states
-  const [isLoading, setIsLoading] = useState(true);
+  const dashboardData = dashboardQuery.data || null;
+  const members = membersQuery.data || [];
+  const households = householdsQuery.data || [];
+  const ministries = ministriesQuery.data || [];
+  const events = eventsQuery.data || [];
+  const financeSummary = finances.summary;
+  const contributions = finances.contributions;
+  const expenses = finances.expenses;
+  const campaigns = finances.campaigns;
+
+  const isLoading =
+    dashboardQuery.isLoading ||
+    membersQuery.isLoading ||
+    householdsQuery.isLoading ||
+    ministriesQuery.isLoading ||
+    eventsQuery.isLoading ||
+    finances.isLoading;
+
   const [isSeeding, setIsSeeding] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -92,43 +153,6 @@ function AppContent() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const loadAllData = async () => {
-    setIsLoading(true);
-    try {
-      const [dash, mems, hhs, mins, fSummary, contribs, exps, camps, evts] = await Promise.all([
-        api.getDashboardStats().catch(() => null),
-        api.getMembers().catch(() => []),
-        api.getHouseholds().catch(() => []),
-        api.getMinistries().catch(() => []),
-        api.getFinanceSummary().catch(() => null),
-        api.getContributions().catch(() => []),
-        api.getExpenses().catch(() => []),
-        api.getPledgeCampaigns().catch(() => []),
-        api.getEvents().catch(() => []),
-      ]);
-
-      if (dash) setDashboardData(dash);
-      setMembers(mems);
-      setHouseholds(hhs);
-      setMinistries(mins);
-      if (fSummary) setFinanceSummary(fSummary);
-      setContributions(contribs);
-      setExpenses(exps);
-      setCampaigns(camps);
-      setEvents(evts);
-    } catch (err) {
-      console.error('Error fetching church CRM data:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      loadAllData();
-    }
-  }, [user]);
-
   // If user is not authenticated, show the Login Screen
   if (!user) {
     return <LoginView />;
@@ -146,7 +170,7 @@ function AppContent() {
     try {
       await api.seedDatabase();
       showToast('✨ ChMS Database seeded with enterprise records!');
-      await loadAllData();
+      await invalidateAllQueries();
     } catch (err: any) {
       alert(err.message || 'Error seeding database');
     } finally {
@@ -159,7 +183,7 @@ function AppContent() {
       await api.createMember(memberData);
       showToast('Member added successfully!');
       setShowAddMemberModal(false);
-      loadAllData();
+      invalidateMembers();
     } catch (err: any) {
       alert(err.message || 'Error creating member');
     }
@@ -171,7 +195,7 @@ function AppContent() {
       await api.updateMember(editingMember.id, updatedData);
       showToast(`Member profile updated successfully!`);
       setEditingMember(null);
-      loadAllData();
+      invalidateMembers();
     } catch (err: any) {
       alert(err.message || 'Error updating member');
     }
@@ -182,7 +206,7 @@ function AppContent() {
       await api.deleteMember(id);
       showToast('Member record deleted');
       if (selectedMemberId === id) setSelectedMemberId(null);
-      loadAllData();
+      invalidateMembers();
     } catch (err: any) {
       alert(err.message || 'Error deleting member');
     }
@@ -192,7 +216,7 @@ function AppContent() {
     try {
       await api.createHousehold(data);
       showToast('Household registered!');
-      loadAllData();
+      invalidateHouseholds();
     } catch (err: any) {
       alert(err.message || 'Error creating household');
     }
@@ -204,7 +228,7 @@ function AppContent() {
       await api.updateHousehold(editingHousehold.id, updatedData);
       showToast(`Household "${updatedData.name || editingHousehold.name}" updated!`);
       setEditingHousehold(null);
-      loadAllData();
+      invalidateHouseholds();
     } catch (err: any) {
       alert(err.message || 'Error updating household');
     }
@@ -214,7 +238,8 @@ function AppContent() {
     try {
       await api.deleteHousehold(id);
       showToast('Household removed. Members set to independent.');
-      loadAllData();
+      invalidateHouseholds();
+      invalidateMembers();
     } catch (err: any) {
       alert(err.message || 'Error deleting household');
     }
@@ -224,7 +249,7 @@ function AppContent() {
     try {
       await api.createMinistry(data);
       showToast('Ministry created!');
-      loadAllData();
+      invalidateMinistries();
     } catch (err: any) {
       alert(err.message || 'Error creating ministry');
     }
@@ -235,7 +260,7 @@ function AppContent() {
       await api.createContribution(data);
       showToast('Contribution recorded!');
       setShowRecordGivingModal(false);
-      loadAllData();
+      invalidateFinances();
     } catch (err: any) {
       alert(err.message || 'Error recording contribution');
     }
@@ -245,7 +270,7 @@ function AppContent() {
     try {
       await api.deleteContribution(id);
       showToast('Contribution removed');
-      loadAllData();
+      invalidateFinances();
     } catch (err: any) {
       alert(err.message || 'Error deleting contribution');
     }
@@ -256,7 +281,7 @@ function AppContent() {
       await api.createExpense(data);
       showToast('Expense logged!');
       setShowRecordExpenseModal(false);
-      loadAllData();
+      invalidateFinances();
     } catch (err: any) {
       alert(err.message || 'Error recording expense');
     }
@@ -266,7 +291,7 @@ function AppContent() {
     try {
       await api.deleteExpense(id);
       showToast('Expense removed');
-      loadAllData();
+      invalidateFinances();
     } catch (err: any) {
       alert(err.message || 'Error deleting expense');
     }
@@ -277,7 +302,7 @@ function AppContent() {
       await api.createPrayerRequest(data);
       showToast('Prayer request submitted!');
       setShowAddPrayerModal(false);
-      loadAllData();
+      invalidateDashboard();
     } catch (err: any) {
       alert(err.message || 'Error submitting prayer request');
     }
@@ -288,7 +313,7 @@ function AppContent() {
       await api.createEvent(data);
       showToast('Service / Gathering logged!');
       setShowCheckInModal(false);
-      loadAllData();
+      invalidateEvents();
     } catch (err: any) {
       alert(err.message || 'Error logging service');
     }
@@ -322,7 +347,7 @@ function AppContent() {
       <Sidebar
         activeSection={activeSection}
         onSelectSection={(sec) => {
-          setActiveSection(sec);
+          handleNavigate(sec);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         milestonesCount={dashboardData?.kpis.upcoming_milestones_count}
@@ -342,7 +367,7 @@ function AppContent() {
           onSearchChange={(q) => {
             setSearchQuery(q);
             if (activeSection !== 'members' && q) {
-              setActiveSection('members');
+              handleNavigate('members');
             }
           }}
           onOpenAddMember={() => setShowAddMemberModal(true)}
@@ -352,114 +377,133 @@ function AppContent() {
           theme={theme}
           onToggleTheme={toggleTheme}
           onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
+          onNavigate={handleNavigate}
         />
 
         <main className="content-body">
-          {activeSection === 'dashboard' && (
-            <DashboardView
-              data={dashboardData}
-              isLoading={isLoading}
-              onNavigate={(sec) => setActiveSection(sec)}
-              onSelectMember={(mId) => setSelectedMemberId(mId)}
-              onOpenAddMember={() => setShowAddMemberModal(true)}
-              onOpenRecordGiving={() => setShowRecordGivingModal(true)}
-              onOpenCheckIn={() => setShowCheckInModal(true)}
-              onOpenAddPrayer={() => setShowAddPrayerModal(true)}
-            />
-          )}
-
-          {activeSection === 'members' && (
-            <MembersView
-              members={members}
-              isLoading={isLoading}
-              onSelectMember={(mId) => setSelectedMemberId(mId)}
-              onOpenAddMember={() => setShowAddMemberModal(true)}
-              onEditMember={(m) => setEditingMember(m)}
-              onDeleteMember={handleDeleteMember}
-            />
-          )}
-
-          {activeSection === 'milestones' && (
-            <ImportantDatesView onSelectMember={(mId) => setSelectedMemberId(mId)} />
-          )}
-
-          {activeSection === 'households' && (
-            <HouseholdsView
-              households={households}
-              isLoading={isLoading}
-              onSelectMember={(mId) => setSelectedMemberId(mId)}
-              onAddHousehold={handleAddHousehold}
-              onEditHousehold={(h) => setEditingHousehold(h)}
-              onDeleteHousehold={handleDeleteHousehold}
-            />
-          )}
-
-          {activeSection === 'ministries' && (
-            <MinistriesView
-              ministries={ministries}
-              members={members}
-              isLoading={isLoading}
-              onAddMinistry={handleAddMinistry}
-              onSelectMember={(mId) => setSelectedMemberId(mId)}
-            />
-          )}
-
-          {activeSection === 'calendar' && (
-            <ChurchCalendarView
-              onNavigate={(section, eventId) => {
-                setActiveSection(section as NavSection);
-                if (eventId) {
-                  setAttendanceEventId(eventId);
+          <ErrorBoundary key={activeSection} moduleName={activeSection}>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <DashboardView
+                    data={dashboardData}
+                    isLoading={isLoading}
+                    onNavigate={(sec) => handleNavigate(sec)}
+                    onSelectMember={(mId) => setSelectedMemberId(mId)}
+                    onOpenAddMember={() => setShowAddMemberModal(true)}
+                    onOpenRecordGiving={() => setShowRecordGivingModal(true)}
+                    onOpenCheckIn={() => setShowCheckInModal(true)}
+                    onOpenAddPrayer={() => setShowAddPrayerModal(true)}
+                  />
                 }
-              }}
-            />
-          )}
-
-          {activeSection === 'ledger' && <LedgerView />}
-
-          {activeSection === 'compliance' && <ComplianceView />}
-
-          {activeSection === 'certificates' && <CertificatesView />}
-
-          {activeSection === 'messaging' && <MassMessagingView />}
-
-          {activeSection === 'settings' && <SettingsView />}
-
-          {activeSection === 'finances' && (
-            <FinancesView
-              summary={financeSummary}
-              contributions={contributions}
-              expenses={expenses}
-              campaigns={campaigns}
-              members={members}
-              isLoading={isLoading}
-              onOpenRecordGiving={() => setShowRecordGivingModal(true)}
-              onOpenRecordExpense={() => setShowRecordExpenseModal(true)}
-              onOpenDonorStatement={(mId) => setStatementMemberId(mId)}
-              onDeleteContribution={handleDeleteContribution}
-              onDeleteExpense={handleDeleteExpense}
-            />
-          )}
-
-          {activeSection === 'attendance' && (
-            <AttendanceView
-              events={events}
-              members={members}
-              isLoading={isLoading}
-              initialEventId={attendanceEventId}
-              onOpenCheckInModal={() => setShowCheckInModal(true)}
-              onSelectMember={(mId) => setSelectedMemberId(mId)}
-              onRefreshEvents={loadAllData}
-            />
-          )}
-
-          {activeSection === 'pastoral' && (
-            <PastoralCareView
-              members={members}
-              onOpenAddPrayer={() => setShowAddPrayerModal(true)}
-              onSelectMember={(mId) => setSelectedMemberId(mId)}
-            />
-          )}
+              />
+              <Route path="/dashboard" element={<Navigate to="/" replace />} />
+              <Route
+                path="/members"
+                element={
+                  <MembersView
+                    members={members}
+                    isLoading={isLoading}
+                    onSelectMember={(mId) => setSelectedMemberId(mId)}
+                    onOpenAddMember={() => setShowAddMemberModal(true)}
+                    onEditMember={(m) => setEditingMember(m)}
+                    onDeleteMember={handleDeleteMember}
+                  />
+                }
+              />
+              <Route
+                path="/milestones"
+                element={<ImportantDatesView onSelectMember={(mId) => setSelectedMemberId(mId)} />}
+              />
+              <Route
+                path="/households"
+                element={
+                  <HouseholdsView
+                    households={households}
+                    isLoading={isLoading}
+                    onSelectMember={(mId) => setSelectedMemberId(mId)}
+                    onAddHousehold={handleAddHousehold}
+                    onEditHousehold={(h) => setEditingHousehold(h)}
+                    onDeleteHousehold={handleDeleteHousehold}
+                  />
+                }
+              />
+              <Route
+                path="/ministries"
+                element={
+                  <MinistriesView
+                    ministries={ministries}
+                    members={members}
+                    isLoading={isLoading}
+                    onAddMinistry={handleAddMinistry}
+                    onSelectMember={(mId) => setSelectedMemberId(mId)}
+                  />
+                }
+              />
+              <Route
+                path="/calendar"
+                element={
+                  <ChurchCalendarView
+                    onNavigate={(section, eventId) => {
+                      if (eventId) {
+                        setAttendanceEventId(eventId);
+                      }
+                      handleNavigate(section as NavSection);
+                    }}
+                  />
+                }
+              />
+              <Route
+                path="/attendance"
+                element={
+                  <AttendanceView
+                    events={events}
+                    members={members}
+                    isLoading={isLoading}
+                    initialEventId={attendanceEventId}
+                    onOpenCheckInModal={() => setShowCheckInModal(true)}
+                    onSelectMember={(mId) => setSelectedMemberId(mId)}
+                    onRefreshEvents={() => invalidateEvents()}
+                  />
+                }
+              />
+              <Route path="/ledger" element={<LedgerView />} />
+              <Route path="/compliance" element={<ComplianceView />} />
+              <Route path="/certificates" element={<CertificatesView />} />
+              <Route path="/messaging" element={<MassMessagingView />} />
+              <Route path="/settings" element={<SettingsView />} />
+              <Route
+                path="/finances"
+                element={
+                  <FinancesView
+                    summary={financeSummary}
+                    contributions={contributions}
+                    expenses={expenses}
+                    campaigns={campaigns}
+                    members={members}
+                    isLoading={isLoading}
+                    onOpenRecordGiving={() => setShowRecordGivingModal(true)}
+                    onOpenRecordExpense={() => setShowRecordExpenseModal(true)}
+                    onOpenDonorStatement={(mId) => setStatementMemberId(mId)}
+                    onDeleteContribution={handleDeleteContribution}
+                    onDeleteExpense={handleDeleteExpense}
+                  />
+                }
+              />
+              <Route
+                path="/pastoral"
+                element={
+                  <PastoralCareView
+                    members={members}
+                    onOpenAddPrayer={() => setShowAddPrayerModal(true)}
+                    onSelectMember={(mId) => setSelectedMemberId(mId)}
+                  />
+                }
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
         </main>
       </div>
 
@@ -472,7 +516,7 @@ function AppContent() {
             setSelectedMemberId(null);
             setStatementMemberId(mId);
           }}
-          onRefreshList={loadAllData}
+          onRefreshList={() => invalidateMembers()}
           onOpenEditMember={(memberDetail) => {
             setSelectedMemberId(null);
             setEditingMember(memberDetail);
@@ -541,7 +585,7 @@ function AppContent() {
           onClose={() => setShowCsvMigrationModal(false)}
           onSuccess={() => {
             showToast('Members & households imported from CSV!');
-            loadAllData();
+            invalidateAllQueries();
           }}
         />
       )}

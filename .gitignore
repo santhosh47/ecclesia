@@ -10,3 +10,32 @@ build/
 .vscode/
 *.iml
 *.tsbuildinfo
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Logs
+logs/
+*.log
+
+# Python & Pytest
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+backend/app/uploads/avatars/*
+!backend/app/uploads/avatars/.gitkeep
+backend/backups/*
+!backend/backups/.gitkeep
+backend/logs/*
+!backend/logs/.gitkeep
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+

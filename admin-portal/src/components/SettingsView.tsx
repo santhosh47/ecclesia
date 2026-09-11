@@ -18,9 +18,13 @@ import {
   Server,
   FileText,
   AlertTriangle,
+  Bell,
+  Database,
 } from 'lucide-react';
 import { useLocalization, WORLD_CURRENCIES } from '../context/LocalizationContext';
 import { ChurchProfile, RoleDefinition } from '../types';
+import { AlertRulesSettingsView } from './AlertRulesSettingsView';
+import { BackupsView } from './BackupsView';
 import { UserManagementView } from './UserManagementView';
 
 export const SettingsView: React.FC = () => {
@@ -38,7 +42,7 @@ export const SettingsView: React.FC = () => {
     toggleMode,
   } = useLocalization();
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'users' | 'modules' | 'rbac' | 'localization' | 'security'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'users' | 'notifications' | 'modules' | 'rbac' | 'localization' | 'security' | 'backups'>('profile');
   const [profileForm, setProfileForm] = useState<ChurchProfile>(churchProfile);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -254,6 +258,26 @@ export const SettingsView: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('notifications')}
+          className="btn"
+          style={{
+            background: activeTab === 'notifications' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'notifications' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'notifications' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <Bell size={16} />
+          <span>Alerts & Notifications</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('modules')}
           className="btn"
           style={{
@@ -330,10 +354,36 @@ export const SettingsView: React.FC = () => {
           <Lock size={16} />
           <span>Security & Data Compliance</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('backups')}
+          className="btn"
+          style={{
+            background: activeTab === 'backups' ? 'rgba(245, 158, 11, 0.15)' : 'transparent',
+            color: activeTab === 'backups' ? 'var(--gold-400)' : 'var(--text-secondary)',
+            borderBottom: activeTab === 'backups' ? '2px solid var(--gold-500)' : '2px solid transparent',
+            borderRadius: 'var(--radius-sm) var(--radius-sm) 0 0',
+            padding: '10px 18px',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <Database size={16} />
+          <span>Backups & Snapshots</span>
+        </button>
       </div>
+
+      {/* Tab: Backups & System Maintenance */}
+      {activeTab === 'backups' && <BackupsView />}
 
       {/* Tab: User Accounts & Logins */}
       {activeTab === 'users' && <UserManagementView />}
+
+      {/* Tab: Automated Alerts & Notifications */}
+      {activeTab === 'notifications' && <AlertRulesSettingsView />}
 
       {/* Tab 1: Church Profile & Legal Branding */}
       {activeTab === 'profile' && (

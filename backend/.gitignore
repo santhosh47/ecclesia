@@ -5,3 +5,7 @@ __pycache__/
 *.db
 uploads/*
 !uploads/.gitkeep
+backups/*
+!backups/.gitkeep
+logs/*
+!logs/.gitkeep

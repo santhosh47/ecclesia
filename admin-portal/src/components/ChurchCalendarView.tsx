@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import {
   Calendar as CalendarIcon,
+  Check,
   CheckCircle2,
   Clock,
+  Copy,
   Download,
   Edit2,
+  ExternalLink,
   Filter,
+  Globe,
   MapPin,
   Plus,
   Repeat,
+  Share2,
   Sparkles,
   Trash2,
   User,
@@ -17,7 +22,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useLocalization } from '../context/LocalizationContext';
-import { ChurchActivity } from '../types';
+import { CalendarSubscriptionLinks, ChurchActivity } from '../types';
 
 interface ChurchCalendarViewProps {
   onNavigate?: (section: string, eventId?: number) => void;
@@ -31,6 +36,10 @@ export const ChurchCalendarView: React.FC<ChurchCalendarViewProps> = ({ onNaviga
   const [filterType, setFilterType] = useState<string>('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingActivity, setEditingActivity] = useState<ChurchActivity | null>(null);
+  const [showSubscribeModal, setShowSubscribeModal] = useState(false);
+  const [subscriptionLinks, setSubscriptionLinks] = useState<CalendarSubscriptionLinks | null>(null);
+  const [loadingLinks, setLoadingLinks] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const [form, setForm] = useState<{
     title: string;
@@ -202,6 +211,42 @@ export const ChurchCalendarView: React.FC<ChurchCalendarViewProps> = ({ onNaviga
     window.open(url, '_blank');
   };
 
+  const handleDownloadIcs = () => {
+    api.downloadCalendarIcs(filterCategory);
+  };
+
+  const handleOpenSubscribe = async () => {
+    setShowSubscribeModal(true);
+    if (!subscriptionLinks) {
+      try {
+        setLoadingLinks(true);
+        const links = await api.getCalendarSubscriptionLinks();
+        setSubscriptionLinks(links);
+      } catch (err) {
+        console.error('Failed to fetch calendar subscription links:', err);
+      } finally {
+        setLoadingLinks(false);
+      }
+    }
+  };
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2500);
+  };
+
+  const handleAddToGoogleCalendar = async (activityId: number) => {
+    try {
+      const res = await api.getActivityGoogleCalendarUrl(activityId);
+      if (res.google_calendar_url) {
+        window.open(res.google_calendar_url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      console.error('Failed to generate Google Calendar URL:', err);
+    }
+  };
+
   const getCategoryTheme = (cat: string) => {
     switch (cat) {
       case 'Worship Service':
@@ -236,6 +281,26 @@ export const ChurchCalendarView: React.FC<ChurchCalendarViewProps> = ({ onNaviga
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleDownloadIcs}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--gold-400)', borderColor: 'rgba(217,119,6,0.4)' }}
+            title="Download full RFC 5545 iCalendar (.ics) file"
+          >
+            <Download size={16} />
+            <span>Download .ICS</span>
+          </button>
+
+          <button
+            onClick={handleOpenSubscribe}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: 'rgba(59,130,246,0.4)', color: '#60a5fa' }}
+            title="Subscribe or sync church calendar with Google Calendar, Apple Calendar, or Outlook"
+          >
+            <CalendarIcon size={16} />
+            <span>Sync / Google Calendar</span>
+          </button>
+
           <button
             onClick={handleExportCsv}
             className="btn btn-secondary"
@@ -456,7 +521,7 @@ export const ChurchCalendarView: React.FC<ChurchCalendarViewProps> = ({ onNaviga
                     flexWrap: 'wrap',
                   }}
                 >
-                  <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     {act.track_attendance && (
                       <button
                         onClick={() => onNavigate?.('attendance', act.event_id || undefined)}
@@ -467,6 +532,15 @@ export const ChurchCalendarView: React.FC<ChurchCalendarViewProps> = ({ onNaviga
                         <span>Track Attendance</span>
                       </button>
                     )}
+                    <button
+                      onClick={() => handleAddToGoogleCalendar(act.id)}
+                      className="btn btn-sm btn-secondary"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11.5px', color: '#60a5fa', borderColor: 'rgba(59,130,246,0.3)' }}
+                      title="Add this event to your personal Google Calendar"
+                    >
+                      <ExternalLink size={12} />
+                      <span>+ Google Cal</span>
+                    </button>
                   </div>
 
                   {hasPermission('manage_calendar') && (
@@ -679,6 +753,168 @@ export const ChurchCalendarView: React.FC<ChurchCalendarViewProps> = ({ onNaviga
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Subscribe & Sync Church Calendar Modal */}
+      {showSubscribeModal && (
+        <div className="modal-backdrop">
+          <div className="modal-card" style={{ maxWidth: '640px', width: '95%' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: 'var(--radius-md)', background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa' }}>
+                  <CalendarIcon size={20} />
+                </div>
+                <div>
+                  <h2 className="modal-title">Subscribe & Sync Church Calendar</h2>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
+                    Keep your personal devices synchronized with all church activities and gatherings.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSubscribeModal(false)}
+                className="btn-icon"
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {loadingLinks ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  Loading calendar subscription endpoints...
+                </div>
+              ) : subscriptionLinks ? (
+                <>
+                  {/* Google Calendar 1-Click Integration */}
+                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            Google Calendar (1-Click Sync)
+                          </span>
+                          <span className="badge badge-blue" style={{ fontSize: '10.5px' }}>Recommended</span>
+                        </div>
+                        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0 }}>
+                          Directly subscribe using your Google Account. All newly scheduled church events automatically appear on your phone and web calendar.
+                        </p>
+                      </div>
+                      <a
+                        href={subscriptionLinks.google_calendar_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-primary"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', flexShrink: 0, textDecoration: 'none' }}
+                      >
+                        <ExternalLink size={14} />
+                        <span>Add to Google Calendar</span>
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* WebCal Live Feed */}
+                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <Globe size={15} color="var(--gold-400)" />
+                      <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        Live WebCal Feed (Apple Calendar, Outlook, Mobile)
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                      Copy this URL into Apple Calendar (macOS/iOS), Microsoft Outlook, or any iCal-compatible reader:
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        readOnly
+                        value={subscriptionLinks.webcal_url}
+                        className="form-input"
+                        style={{ fontSize: '12px', fontFamily: 'monospace', flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(subscriptionLinks.webcal_url, 'webcal')}
+                        className="btn btn-secondary"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', flexShrink: 0 }}
+                      >
+                        {copiedKey === 'webcal' ? <Check size={14} color="#34d399" /> : <Copy size={14} />}
+                        <span>{copiedKey === 'webcal' ? 'Copied!' : 'Copy'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Offline Download .ICS */}
+                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <Download size={15} color="var(--gold-400)" />
+                          <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            Standalone .ICS File Download
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
+                          Download standard RFC 5545 snapshot file for offline importing into desktop calendar apps.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDownloadIcs}
+                        className="btn btn-secondary"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: 'var(--gold-400)' }}
+                      >
+                        <Download size={14} />
+                        <span>Download .ics</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Share with Church Members */}
+                  <div style={{ padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.25)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                          <Share2 size={14} color="#c084fc" />
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            Share with Church Members
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '11.5px', color: 'var(--text-secondary)', margin: 0 }}>
+                          Members can subscribe on their smartphones by opening the feed link or importing into Google Calendar.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(`${window.location.origin}/calendar`, 'member_link')}
+                        className="btn btn-secondary btn-sm"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', borderColor: 'rgba(168,85,247,0.4)', color: '#c084fc' }}
+                      >
+                        {copiedKey === 'member_link' ? <Check size={13} color="#34d399" /> : <Copy size={13} />}
+                        <span>{copiedKey === 'member_link' ? 'Copied!' : 'Copy Share Link'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  Failed to load calendar links. Please verify backend server connection.
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                onClick={() => setShowSubscribeModal(false)}
+                className="btn btn-secondary"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

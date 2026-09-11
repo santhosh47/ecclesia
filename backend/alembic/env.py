@@ -8,10 +8,19 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import get_settings
 from app.database.base import Base
 import app.models  # noqa: F401 - registers models for migration autogeneration
+from app.database.session import get_normalized_database_url
 
 config = context.config
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+
+# Honor custom url passed in alembic config or environment if specified
+custom_url = config.get_main_option("sqlalchemy.url")
+if custom_url and custom_url not in {"sqlite:///./ecclesia.db", "sqlite:///ecclesia.db"}:
+    normalized_url = get_normalized_database_url(custom_url)
+else:
+    normalized_url = get_normalized_database_url(settings.database_url)
+
+config.set_main_option("sqlalchemy.url", normalized_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -22,7 +31,7 @@ target_metadata = Base.metadata
 def run_migrations_offline() -> None:
     """Run migrations without creating a database connection."""
     context.configure(
-        url=settings.database_url,
+        url=normalized_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -34,6 +43,7 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     """Run migrations with a live database connection."""
     configuration = config.get_section(config.config_ini_section) or {}
+    configuration["sqlalchemy.url"] = normalized_url
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
