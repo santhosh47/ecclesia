@@ -227,3 +227,17 @@ Logs written to the mounted volume `logs/ecclesia.log` are compatible with log f
 - **Vector / FluentBit / Logstash**: Tail `backend/logs/ecclesia.log` and forward structured JSON or syslog entries to Datadog, Grafana Loki, or AWS CloudWatch.
 - **Request IDs**: The `[req_<id>]` token allows instant cross-referencing between frontend error reports and backend database transactions.
 
+---
+
+## 8. Render Cloud Deployment
+
+Ecclesia is configured for 1-click deployment on [Render](https://render.com) using [render.yaml](file:///c:/Users/santh/ecclesia-1/render.yaml).
+
+For complete step-by-step setup, port binding rules, and troubleshooting instructions, see the dedicated [Render Deployment Guide](file:///c:/Users/santh/ecclesia-1/docs/RENDER_DEPLOYMENT.md).
+
+### Quick Render Settings:
+- **Build Command**: `pip install --upgrade pip && pip install -r backend/requirements.txt`
+- **Start Command**: `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **Health Check Path**: `/health`
+- **Environment Variables**: `PYTHON_VERSION=3.11.9`, `ENVIRONMENT=production`, `DEBUG=false`
+

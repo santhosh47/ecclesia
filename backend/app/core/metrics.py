@@ -5,15 +5,57 @@ import time
 from typing import Callable
 
 from fastapi import FastAPI, Request, Response
-from prometheus_client import (
-    CONTENT_TYPE_LATEST,
-    Counter,
-    Gauge,
-    Histogram,
-    Info,
-    REGISTRY,
-    generate_latest,
-)
+try:
+    from prometheus_client import (
+        CONTENT_TYPE_LATEST,
+        Counter,
+        Gauge,
+        Histogram,
+        Info,
+        REGISTRY,
+        generate_latest,
+    )
+    HAS_PROMETHEUS = True
+except ImportError:
+    HAS_PROMETHEUS = False
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
+
+    class _DummyMetric:
+        def labels(self, *args, **kwargs):
+            return self
+
+        def inc(self, *args, **kwargs):
+            pass
+
+        def dec(self, *args, **kwargs):
+            pass
+
+        def set(self, *args, **kwargs):
+            pass
+
+        def observe(self, *args, **kwargs):
+            pass
+
+        def info(self, *args, **kwargs):
+            pass
+
+    def Counter(*args, **kwargs):  # type: ignore[no-redef]
+        return _DummyMetric()
+
+    def Gauge(*args, **kwargs):  # type: ignore[no-redef]
+        return _DummyMetric()
+
+    def Histogram(*args, **kwargs):  # type: ignore[no-redef]
+        return _DummyMetric()
+
+    def Info(*args, **kwargs):  # type: ignore[no-redef]
+        return _DummyMetric()
+
+    REGISTRY = None  # type: ignore[assignment]
+
+    def generate_latest(*args, **kwargs):  # type: ignore[no-redef]
+        return b"# prometheus_client is not installed\n"
+
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import get_settings
@@ -27,7 +69,7 @@ APP_INFO = Info(
     "Ecclesia application metadata and runtime environment",
 )
 APP_INFO.info({
-    "version": "0.4.0",
+    "version": "0.5.0",
     "service": settings.app_name,
     "python_version": platform.python_version(),
     "environment": "production" if not settings.debug else "development",
@@ -39,6 +81,7 @@ HTTP_REQUESTS_TOTAL = Counter(
     "Total count of HTTP requests processed by Ecclesia API",
     ["method", "endpoint", "status_code"],
 )
+
 
 HTTP_REQUEST_DURATION_SECONDS = Histogram(
     "ecclesia_http_request_duration_seconds",
@@ -104,6 +147,9 @@ class PrometheusMetricsMiddleware(BaseHTTPMiddleware):
     """Asynchronous HTTP middleware tracking request rates, durations, and active counts."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if not HAS_PROMETHEUS:
+            return await call_next(request)
+
         path = request.url.path
         # Exclude /metrics itself and static assets from metrics tracking to avoid feedback loops
         if path == "/metrics" or path.startswith("/assets") or path.startswith("/uploads"):
@@ -132,6 +178,11 @@ class PrometheusMetricsMiddleware(BaseHTTPMiddleware):
 
 def prometheus_metrics_response() -> Response:
     """Generate Prometheus exposition text response."""
+    if not HAS_PROMETHEUS:
+        return Response(
+            content=b"# prometheus_client is not installed\n",
+            media_type=CONTENT_TYPE_LATEST,
+        )
     update_database_pool_metrics()
     return Response(
         content=generate_latest(REGISTRY),
