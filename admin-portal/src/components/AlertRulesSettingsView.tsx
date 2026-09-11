@@ -18,6 +18,7 @@ import {
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { EvaluateTriggersResult, NotificationRule } from '../types';
+import { isPushNotificationSupported, subscribeUserToPush } from '../utils/webPush';
 
 export const AlertRulesSettingsView: React.FC = () => {
   const { user } = useAuth();
@@ -26,6 +27,13 @@ export const AlertRulesSettingsView: React.FC = () => {
   const [evaluating, setEvaluating] = useState(false);
   const [evalResult, setEvalResult] = useState<EvaluateTriggersResult | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  // Device Push Notification State
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushPermission, setPushPermission] = useState<string>('default');
+  const [isSubscribingPush, setIsSubscribingPush] = useState(false);
+  const [isSendingTestPush, setIsSendingTestPush] = useState(false);
+
 
   // Edit / Create Modal State
   const [showModal, setShowModal] = useState(false);
@@ -70,7 +78,44 @@ export const AlertRulesSettingsView: React.FC = () => {
 
   useEffect(() => {
     fetchRules();
+    isPushNotificationSupported().then((sup) => {
+      setPushSupported(sup);
+      if (sup && 'Notification' in window) {
+        setPushPermission(Notification.permission);
+      }
+    });
   }, []);
+
+  const handleEnableDevicePush = async () => {
+    try {
+      setIsSubscribingPush(true);
+      const { publicKey } = await api.getVapidPublicKey();
+      const sub = await subscribeUserToPush(publicKey);
+      if (sub) {
+        await api.subscribeDevicePush(sub.toJSON());
+        setPushPermission('granted');
+        setStatusMessage('Device Push Notifications successfully enabled for your pastoral account!');
+        setTimeout(() => setStatusMessage(null), 4000);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to enable device push notifications');
+    } finally {
+      setIsSubscribingPush(false);
+    }
+  };
+
+  const handleSendTestPush = async () => {
+    try {
+      setIsSendingTestPush(true);
+      const res = await api.sendTestPush();
+      setStatusMessage(res.message);
+      setTimeout(() => setStatusMessage(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to send test alert');
+    } finally {
+      setIsSendingTestPush(false);
+    }
+  };
 
   const handleOpenAdd = () => {
     setEditingRule(null);
@@ -281,6 +326,92 @@ export const AlertRulesSettingsView: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Device Push Notifications (PWA / Browser) Banner Card */}
+      <div
+        className="card"
+        style={{
+          padding: '16px 20px',
+          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-lg)',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
+              background: 'rgba(245, 158, 11, 0.12)',
+              border: '1px solid rgba(245, 158, 11, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--gold-400)',
+            }}
+          >
+            <Smartphone size={20} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
+                Device & PWA Web Push Alerts
+              </strong>
+              <span
+                style={{
+                  fontSize: '11px',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  background:
+                    pushPermission === 'granted'
+                      ? 'rgba(16, 185, 129, 0.15)'
+                      : 'rgba(148, 163, 184, 0.15)',
+                  color: pushPermission === 'granted' ? '#34d399' : 'var(--text-muted)',
+                  border:
+                    pushPermission === 'granted'
+                      ? '1px solid rgba(16, 185, 129, 0.3)'
+                      : '1px solid var(--border-subtle)',
+                }}
+              >
+                {pushPermission === 'granted' ? '● Connected' : '○ Not Subscribed'}
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+              Receive instantaneous lockscreen push alerts for urgent pastoral needs and absences even when Ecclesia is in the background.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {pushPermission === 'granted' ? (
+            <button
+              onClick={handleSendTestPush}
+              disabled={isSendingTestPush}
+              className="btn btn-secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}
+            >
+              <Bell size={14} />
+              <span>{isSendingTestPush ? 'Dispatching...' : 'Send Test Alert'}</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleEnableDevicePush}
+              disabled={isSubscribingPush || !pushSupported}
+              className="btn btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}
+            >
+              <Smartphone size={14} />
+              <span>{isSubscribingPush ? 'Enabling...' : 'Enable Device Push Alerts'}</span>
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Rules Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '16px' }}>

@@ -42,3 +42,20 @@ class InAppNotification(Base):
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     action_url: Mapped[str | None] = mapped_column(String(255), nullable=True)  # "/members?search=Hopper"
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class DevicePushSubscription(Base):
+    """Browser Web Push / PWA and mobile device push subscriptions for pastors and admins."""
+
+    __tablename__ = "device_push_subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    target_role: Mapped[str] = mapped_column(String(50), default="pastor")  # "pastor", "admin", "super_admin"
+    endpoint: Mapped[str] = mapped_column(Text, nullable=False)
+    p256dh: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    auth: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    device_type: Mapped[str] = mapped_column(String(50), default="web")  # "web", "android", "ios"
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+

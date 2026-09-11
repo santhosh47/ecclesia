@@ -255,4 +255,32 @@ class ApiService {
       };
     }
   }
+
+  /// Register mobile device push notification token.
+  Future<bool> registerDeviceToken({
+    required String token,
+    String deviceType = 'android',
+    String? authToken,
+  }) async {
+    try {
+      final headers = Map<String, String>.from(_jsonHeaders);
+      if (authToken != null) {
+        headers['Authorization'] = 'Bearer $authToken';
+      }
+      final response = await _client
+          .post(
+            Uri.parse('$_baseUrl/notifications/push-subscribe'),
+            headers: headers,
+            body: jsonEncode({
+              'endpoint': token,
+              'device_type': deviceType,
+            }),
+          )
+          .timeout(AppConfig.requestTimeout);
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
 }
+

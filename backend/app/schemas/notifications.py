@@ -60,3 +60,23 @@ class EvaluateTriggersResult(BaseModel):
     email_dispatched_count: int
     whatsapp_dispatched_count: int
     recipients_summary: list[str]
+
+
+class DevicePushSubscriptionCreate(BaseModel):
+    endpoint: str = Field(..., max_length=1000)
+    p256dh: str | None = Field(default=None, max_length=255)
+    auth: str | None = Field(default=None, max_length=255)
+    device_type: str = Field(default="web", max_length=50)
+
+
+class DevicePushSubscriptionRead(BaseModel):
+    id: int
+    user_id: int | None
+    target_role: str
+    endpoint: str
+    device_type: str
+    is_active: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+

@@ -109,12 +109,12 @@ flutter run
 
 Ecclesia features 100% automated test coverage across all application tiers:
 
-### Backend Pytest Suite (66 Tests — 100% Pass)
+### Backend Pytest Suite (67 Tests — 100% Pass)
 ```powershell
 cd backend
 python -m pytest
 ```
-*Validates calendar export & subscriptions, alert rules & multi-channel notifications, answered prayer tracking, Alembic migrations, Prometheus metrics, database backups, audit logging, RBAC security, error envelopes, and connection pooling.*
+*Validates calendar export & subscriptions, alert rules, VAPID push subscriptions, multi-channel notifications, answered prayer tracking, Alembic migrations, Prometheus metrics, database backups, audit logging, RBAC security, error envelopes, and connection pooling.*
 
 ### Frontend Playwright E2E Suite (15 Tests — 100% Pass)
 ```powershell
@@ -127,7 +127,7 @@ npm run test:e2e:desktop
 npm run test:e2e:mobile
 ```
 
-### Mobile Flutter Suite (13 Tests + 0 Warnings — 100% Pass)
+### Mobile Flutter Suite (15 Tests + 0 Warnings — 100% Pass)
 ```powershell
 cd mobile
 flutter test

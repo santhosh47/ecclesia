@@ -768,5 +768,15 @@ export const api = {
     request<InAppNotification>(`/notifications/${id}/read`, { method: 'POST' }),
   markAllNotificationsRead: () =>
     request<{ marked_read: number }>('/notifications/mark-all-read', { method: 'POST' }),
+  getVapidPublicKey: () =>
+    request<{ publicKey: string }>('/notifications/vapid-public-key'),
+  subscribeDevicePush: (subscription: any) =>
+    request<{ status: string; role: string }>('/notifications/push-subscribe', {
+      method: 'POST',
+      body: JSON.stringify(subscription),
+    }),
+  sendTestPush: () =>
+    request<{ status: string; message: string }>('/notifications/test-push', { method: 'POST' }),
 };
+
 

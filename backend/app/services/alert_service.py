@@ -253,3 +253,47 @@ class AlertNotificationService:
                 count += 1
         self.db.commit()
         return count
+
+    def get_vapid_public_key(self) -> str:
+        """Return the VAPID public key for Web Push."""
+        return "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U"
+
+    def subscribe_device(
+        self,
+        user_id: int | None,
+        user_role: str,
+        payload,
+    ):
+        """Register or update a browser Web Push or device subscription."""
+        from app.models.notifications import DevicePushSubscription
+
+        existing = self.db.scalar(
+            select(DevicePushSubscription).where(
+                DevicePushSubscription.endpoint == payload.endpoint
+            )
+        )
+        if existing:
+            existing.user_id = user_id
+            existing.target_role = user_role
+            existing.p256dh = payload.p256dh
+            existing.auth = payload.auth
+            existing.device_type = payload.device_type
+            existing.is_active = True
+            self.db.commit()
+            self.db.refresh(existing)
+            return existing
+
+        sub = DevicePushSubscription(
+            user_id=user_id,
+            target_role=user_role,
+            endpoint=payload.endpoint,
+            p256dh=payload.p256dh,
+            auth=payload.auth,
+            device_type=payload.device_type,
+            is_active=True,
+        )
+        self.db.add(sub)
+        self.db.commit()
+        self.db.refresh(sub)
+        return sub
+

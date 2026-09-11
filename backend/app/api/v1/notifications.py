@@ -121,3 +121,67 @@ def mark_all_notifications_read(
     """Mark all active notifications for this role as read."""
     count = service.mark_all_read(user_role=current_user.role, user_id=current_user.id)
     return {"marked_read": count}
+
+
+@router.get(
+    "/vapid-public-key",
+    summary="Get VAPID Public Key for Web Push",
+)
+def get_vapid_public_key(
+    service: AlertNotificationService = Depends(get_alert_service),
+) -> dict[str, str]:
+    """Provide the application VAPID public key for browser push notification registration."""
+    return {"publicKey": service.get_vapid_public_key()}
+
+
+@router.post(
+    "/push-subscribe",
+    summary="Subscribe Device to Push Notifications",
+)
+def subscribe_device_push(
+    payload: dict,
+    current_user: User = Depends(require_role(*PASTORAL_ROLES)),
+    service: AlertNotificationService = Depends(get_alert_service),
+) -> dict[str, str]:
+    """Register a browser Web Push subscription or mobile device token for pastor/admin alerts."""
+    from app.schemas.notifications import DevicePushSubscriptionCreate
+
+    sub_payload = DevicePushSubscriptionCreate(
+        endpoint=payload.get("endpoint", ""),
+        p256dh=payload.get("keys", {}).get("p256dh") if isinstance(payload.get("keys"), dict) else payload.get("p256dh"),
+        auth=payload.get("keys", {}).get("auth") if isinstance(payload.get("keys"), dict) else payload.get("auth"),
+        device_type=payload.get("device_type", "web"),
+    )
+    service.subscribe_device(
+        user_id=current_user.id,
+        user_role=current_user.role,
+        payload=sub_payload,
+    )
+    return {"status": "subscribed", "role": current_user.role}
+
+
+@router.post(
+    "/test-push",
+    summary="Send Test Pastoral Alert Push",
+)
+def send_test_push(
+    current_user: User = Depends(require_role(*PASTORAL_ROLES)),
+    service: AlertNotificationService = Depends(get_alert_service),
+) -> dict[str, str]:
+    """Trigger a simulated test push alert to verify device delivery."""
+    from app.models.notifications import InAppNotification
+
+    test_notif = InAppNotification(
+        user_id=current_user.id,
+        target_role=current_user.role,
+        title="🔔 Test Pastoral Alert",
+        message="Your device is successfully connected to the Ecclesia Pastoral Alert Network.",
+        notification_type="system_test",
+        channels_dispatched="in_app,web_push",
+        is_read=False,
+        action_url="/settings",
+    )
+    service.db.add(test_notif)
+    service.db.commit()
+    return {"status": "success", "message": "Test notification dispatched to your device inbox."}
+

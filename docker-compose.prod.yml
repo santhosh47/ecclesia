@@ -1,0 +1,65 @@
+# Ecclesia Church Management System (ChMS)
+# Production Container Stack
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ecclesia_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-ecclesia_admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-SuperSecureProductionPassword2026!}
+      POSTGRES_DB: ${DB_NAME:-ecclesia_production}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ecclesia_admin} -d ${DB_NAME:-ecclesia_production}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: ecclesia:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecclesia_app
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      DATABASE_URL: postgresql+psycopg2://${DB_USER:-ecclesia_admin}:${DB_PASSWORD:-SuperSecureProductionPassword2026!}@db:5432/${DB_NAME:-ecclesia_production}
+      SECRET_KEY: ${SECRET_KEY}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://admin.yourchurch.org}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FILE: logs/ecclesia.log
+    volumes:
+      - ecclesia_uploads:/app/backend/uploads
+      - ecclesia_logs:/app/backend/logs
+      - ecclesia_backups:/app/backend/backups
+    expose:
+      - "8000"
+
+  nginx:
+    image: nginx:alpine
+    container_name: ecclesia_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - app
+
+volumes:
+  postgres_prod_data:
+  ecclesia_uploads:
+  ecclesia_logs:
+  ecclesia_backups:

@@ -1,0 +1,52 @@
+# Ecclesia Church Management System (ChMS)
+# Development & Staging Container Stack
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecclesia_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - DATABASE_URL=postgresql+psycopg2://ecclesia_user:ecclesia_dev_password@db:5432/ecclesia_dev
+      - SECRET_KEY=ecclesia-dev-secret-key-not-for-production-2026
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:8000,http://127.0.0.1:5173
+      - LOG_LEVEL=INFO
+      - LOG_FILE=logs/ecclesia.log
+    volumes:
+      - ecclesia_uploads:/app/backend/uploads
+      - ecclesia_logs:/app/backend/logs
+      - ecclesia_backups:/app/backend/backups
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: ecclesia_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=ecclesia_user
+      - POSTGRES_PASSWORD=ecclesia_dev_password
+      - POSTGRES_DB=ecclesia_dev
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecclesia_user -d ecclesia_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_dev_data:
+  ecclesia_uploads:
+  ecclesia_logs:
+  ecclesia_backups:

@@ -150,3 +150,36 @@ def test_evaluate_triggers_and_inbox(auth_headers):
     read_res = client.post("/api/v1/notifications/mark-all-read", headers=auth_headers["pastor"])
     assert read_res.status_code == 200
     assert "marked_read" in read_res.json()
+
+
+def test_vapid_key_and_push_subscription(auth_headers):
+    """Verify retrieval of VAPID key and device push registration."""
+    vapid_res = client.get("/api/v1/notifications/vapid-public-key")
+    assert vapid_res.status_code == 200
+    assert "publicKey" in vapid_res.json()
+    assert len(vapid_res.json()["publicKey"]) > 20
+
+    sub_payload = {
+        "endpoint": "https://fcm.googleapis.com/fcm/send/test_device_token_12345",
+        "keys": {
+            "p256dh": "test_p256dh_key_sample",
+            "auth": "test_auth_secret_sample",
+        },
+        "device_type": "web",
+    }
+    sub_res = client.post(
+        "/api/v1/notifications/push-subscribe",
+        json=sub_payload,
+        headers=auth_headers["pastor"],
+    )
+    assert sub_res.status_code == 200
+    assert sub_res.json()["status"] == "subscribed"
+
+    # Send test push alert
+    test_push_res = client.post(
+        "/api/v1/notifications/test-push",
+        headers=auth_headers["pastor"],
+    )
+    assert test_push_res.status_code == 200
+    assert test_push_res.json()["status"] == "success"
+

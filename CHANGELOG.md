@@ -30,13 +30,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Endpoints in `backend/app/api/v1/pastoral.py`: `POST /pastoral/prayers/{id}/answer` (records answer date and praise testimony), `GET /pastoral/prayers/answered` (searchable answered prayers feed), `GET /pastoral/prayers/stats` (total requests, answered count, answer rate %, avg days to breakthrough).
   - Admin Portal UI in `PastoralCareView.tsx`: "Answered Prayers & Testimony Wall" tab featuring celebration statistics KPI cards, category filtering, search input, praise report cards, and "Copy Praise Testimony" sharing.
   - Unit tests in `backend/tests/test_answered_prayers.py` (2/2 passed).
+- **Device Web Push (PWA) & Mobile Push Notification Architecture**:
+  - Added `DevicePushSubscription` model in `backend/app/models/notifications.py` and Alembic migration `c741e9b28a11_add_device_push_subscriptions.py`.
+  - Added endpoints in `backend/app/api/v1/notifications.py`: `GET /notifications/vapid-public-key`, `POST /notifications/push-subscribe`, `POST /notifications/test-push`.
+  - Created PWA Service Worker in `admin-portal/public/sw.js` for background push notifications and click-to-navigate handling.
+  - Implemented `admin-portal/src/utils/webPush.ts` for browser push permissions, VAPID key conversion, and subscription dispatch.
+  - Added interactive "Device & PWA Web Push Alerts" card to `AlertRulesSettingsView.tsx` with live subscription status and test alert triggers.
+  - Implemented `PushNotificationService` and `PastoralPushNotification` model in Flutter mobile client (`mobile/lib/services/push_notification_service.dart`) with token registration and live notification streams.
+  - Unit tests added in `backend/tests/test_notifications.py` (5/5 passed) and `mobile/test/push_notification_test.dart` (2/2 passed).
+- **Production Container Stack (Docker Compose & Nginx)**:
+  - Created `docker-compose.yml` for unified development and staging (`docker compose up -d`).
+  - Created `docker-compose.prod.yml` with PostgreSQL 16 health checks, application container, and Nginx reverse proxy.
+  - Created `nginx/nginx.conf` and root `nginx.conf` with gzip compression, security headers (nosniff, SAMEORIGIN), and WebSocket proxying.
+  - Created `.env.production.example` template with PostgreSQL, SMTP, WhatsApp, and VAPID key documentation.
 - **GitHub-Friendly Standardization Assets**:
   - MIT License populated in `LICENSE`.
   - Issue templates: `.github/ISSUE_TEMPLATE/bug_report.md` and `.github/ISSUE_TEMPLATE/feature_request.md`.
   - Pull Request template: `.github/PULL_REQUEST_TEMPLATE.md`.
   - Security policy: `SECURITY.md` with vulnerability disclosure guidelines and timeline.
   - Community Code of Conduct: `CODE_OF_CONDUCT.md` (Contributor Covenant v2.1).
-  - Safe, idempotent Alembic migration in `backend/alembic/versions/b634a3a4c27e_add_notifications_tables.py`.
+  - Safe, idempotent Alembic migrations in `backend/alembic/versions/`.
 
 ## [0.4.0] - 2026-09-11
 

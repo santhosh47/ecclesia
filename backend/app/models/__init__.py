@@ -14,7 +14,7 @@ from app.models.member import Member
 from app.models.messaging import MessageBroadcast, MessageLog, MessageTemplate
 from app.models.ministry import MemberMinistry, Ministry
 from app.models.pastoral import PastoralCareNote, PrayerRequest, VisitorFollowUp
-from app.models.notifications import InAppNotification, NotificationRule
+from app.models.notifications import DevicePushSubscription, InAppNotification, NotificationRule
 from app.models.user import User
 
 __all__ = [
@@ -49,4 +49,5 @@ __all__ = [
     "ChurchSetting",
     "NotificationRule",
     "InAppNotification",
+    "DevicePushSubscription",
 ]
