@@ -80,5 +80,67 @@ def test_alembic_upgrade_and_downgrade_cycle(migration_test_db):
     reapplied_tables = inspector.get_table_names()
     assert "members" in reapplied_tables
     assert "audit_logs" in reapplied_tables
+    assert "church_activities" in reapplied_tables
+    
+    activity_cols = {c["name"] for c in inspector.get_columns("church_activities")}
+    assert "track_attendance" in activity_cols, "Expected track_attendance column in church_activities after migration"
     
     engine.dispose()
+
+
+def test_auto_migrate_missing_columns_dynamically_repairs_legacy_schema(tmp_path: Path):
+    """Verify that auto_migrate_missing_columns detects missing columns and repairs the database schema."""
+    from sqlalchemy import text
+    from app.database.init_db import auto_migrate_missing_columns
+
+    db_file = tmp_path / "legacy_schema_test.db"
+    test_engine = create_engine(f"sqlite:///{db_file.as_posix()}")
+
+    # 1. Create a legacy church_activities table missing track_attendance
+    with test_engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE church_activities (
+                id INTEGER PRIMARY KEY,
+                title VARCHAR(200) NOT NULL,
+                category VARCHAR(50) NOT NULL,
+                activity_type VARCHAR(50) NOT NULL,
+                starts_at DATETIME NOT NULL
+            )
+        """))
+        conn.execute(text("""
+            INSERT INTO church_activities (id, title, category, activity_type, starts_at)
+            VALUES (1, 'Sunday Morning Service', 'Worship Service', 'Regular Weekly', '2026-09-13 09:00:00')
+        """))
+
+    # Verify column is initially missing
+    inspector = inspect(test_engine)
+    initial_cols = {c["name"] for c in inspector.get_columns("church_activities")}
+    assert "track_attendance" not in initial_cols
+
+    # 2. Run auto-migration
+    auto_migrate_missing_columns(test_engine)
+
+    # 3. Verify column is added and existing row has default value
+    inspector = inspect(test_engine)
+    updated_cols = {c["name"] for c in inspector.get_columns("church_activities")}
+    assert "track_attendance" in updated_cols
+    assert "location" in updated_cols
+    assert "is_active" in updated_cols
+
+    with test_engine.connect() as conn:
+        row = conn.execute(text("SELECT id, title, track_attendance FROM church_activities WHERE id = 1")).fetchone()
+        assert row[0] == 1
+        assert row[1] == "Sunday Morning Service"
+        assert row[2] in (0, False)
+
+        # 4. Insert new record with track_attendance = True
+        conn.execute(text("""
+            INSERT INTO church_activities (id, title, category, activity_type, starts_at, track_attendance)
+            VALUES (2, 'Midweek Prayer', 'Prayer Meeting', 'Weekly', '2026-09-16 18:30:00', 1)
+        """))
+        new_row = conn.execute(text("SELECT id, title, track_attendance FROM church_activities WHERE id = 2")).fetchone()
+        assert new_row[0] == 2
+        assert new_row[2] in (1, True)
+
+    test_engine.dispose()
+

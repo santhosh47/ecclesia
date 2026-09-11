@@ -118,3 +118,31 @@ To deploy the frontend as a Static Site:
    - **Destination**: `/index.html`
 5. Add Environment Variable:
    - `VITE_API_BASE_URL`: `https://your-ecclesia-backend.onrender.com/api/v1`
+
+---
+
+## 6. Database Schema Synchronization & Missing Column Fix
+
+### UndefinedColumn Error
+```
+sqlalchemy.exc.ProgrammingError: (psycopg.errors.UndefinedColumn) column "track_attendance" of relation "church_activities" does not exist
+```
+
+### Why This Occurs on Existing Databases
+If a database was initialized during an earlier deployment, SQLAlchemy's standard `Base.metadata.create_all()` only issues `CREATE TABLE IF NOT EXISTS`. It **does not alter existing tables** or add newly introduced columns like `track_attendance` in `church_activities`.
+
+### Automatic Resolution (Built-in)
+Ecclesia now includes an **automated schema migration engine** in [`backend/app/database/init_db.py`](file:///c:/Users/santh/ecclesia-1/backend/app/database/init_db.py):
+- On every server startup, `auto_migrate_missing_columns(engine)` inspects all existing tables.
+- It detects any missing columns defined on models and dynamically issues safe `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...` with appropriate defaults.
+- Any redeployment on Render will automatically self-repair the database with zero downtime.
+
+### Direct Instant Fix (Optional via Render Dashboard)
+If you wish to apply the column fix immediately without waiting for a redeploy:
+1. Go to your **PostgreSQL Database** in the [Render Dashboard](https://dashboard.render.com).
+2. Click **Connect** -> **PSQL Command** (or use the web query editor / PgAdmin / DBeaver).
+3. Execute:
+   ```sql
+   ALTER TABLE church_activities ADD COLUMN IF NOT EXISTS track_attendance BOOLEAN NOT NULL DEFAULT FALSE;
+   ```
+
